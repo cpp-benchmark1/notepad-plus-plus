@@ -33,7 +33,7 @@ jobs:
       shell: powershell
       run: |
           cd PowerEditor\gcc
-          .\mingw32-make
+          mingw32-make
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
