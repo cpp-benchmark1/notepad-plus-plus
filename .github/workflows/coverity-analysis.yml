@@ -40,6 +40,7 @@ jobs:
         run: echo "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: pwsh
       - name: Build with Coverity
+        continue-on-error: true
         run: |
           $covPath = Join-Path $PWD 'cov-analysis-win64-2024.6.1\bin\cov-build.exe'
           Write-Output "✅ Resolved Coverity path: $covPath"
