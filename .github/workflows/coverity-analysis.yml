@@ -52,6 +52,12 @@ jobs:
             Write-Error "❌ Could not find Coverity executable at $covPath"
             exit 1
           }
+      - name: Upload Coverity build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverity-build-log
+          path: PowerEditor/gcc/cov-int/build-log.txt
       - name: Compress with bzip2
         run: |
           Compress-Archive -Path cov-int -DestinationPath myproject.zip
