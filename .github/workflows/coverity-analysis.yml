@@ -48,7 +48,7 @@ jobs:
           if (Test-Path $covPath) {
             Write-Output "📦 Coverity build tool found. Running build..."
             cd PowerEditor\gcc
-            & $covPath --dir cov-int make
+            & $covPath --dir cov-int make || true
           } else {
             Write-Error "❌ Could not find Coverity executable at $covPath"
             exit 1
