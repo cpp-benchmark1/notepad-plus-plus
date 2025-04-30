@@ -36,8 +36,9 @@ jobs:
           unzip coverity_tool.zip
           $Env:PATH = "$PWD\coverity_tool\bin;$Env:PATH"
           Write-Output "Coverity Tool installed successfully"
-      - name: Add Git mkdir to PATH
-        run: echo "C:\Program Files\Git\usr\bin" >> $GITHUB_PATH
+      - name: Prepend Git usr/bin to PATH
+        run: echo "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: pwsh
       - name: Build with Coverity
         run: |
           $covPath = Join-Path $PWD 'cov-analysis-win64-2024.6.1\bin\cov-build.exe'
