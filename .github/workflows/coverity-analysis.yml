@@ -36,18 +36,9 @@ jobs:
           unzip coverity_tool.zip
           $Env:PATH = "$PWD\coverity_tool\bin;$Env:PATH"
           Write-Output "Coverity Tool installed successfully"
-      - name: Add MinGW to PATH
-        run: |
-          echo "##[group]PATH before update"
-          echo $env:PATH
-          echo "##[endgroup]"
-          $env:PATH = "C:\mingw64\bin;" + $env:PATH
-          echo "##[group]PATH after update"
-          echo $env:PATH
-          echo "##[endgroup]"
       - name: Build with Coverity
         run: |
-          Get-Command make -All
+          gcc --version
           $covPath = Join-Path $PWD 'cov-analysis-win64-2024.6.1\bin\cov-build.exe'
           Write-Output "✅ Resolved Coverity path: $covPath"
         
