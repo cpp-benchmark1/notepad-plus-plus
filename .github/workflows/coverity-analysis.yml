@@ -38,7 +38,8 @@ jobs:
           Write-Output "Coverity Tool installed successfully"
       - name: Build with Coverity
         run: |
-          Test-Path "C:\Program Files\Git\bin\"
+          Test-Path "C:\Program Files\Git\usr\bin"
+          dir "C:\Program Files\Git\usr\bin"
           $covPath = Join-Path $PWD 'cov-analysis-win64-2024.6.1\bin\cov-build.exe'
           Write-Output "✅ Resolved Coverity path: $covPath"
         
