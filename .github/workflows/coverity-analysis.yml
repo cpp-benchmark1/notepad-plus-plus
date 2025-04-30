@@ -38,8 +38,7 @@ jobs:
           Write-Output "Coverity Tool installed successfully"
       - name: Build with Coverity
         run: |
-          cd PowerEditor\gcc
-          cov-analysis-win64-2024.6.1/bin/cov-build.exe --dir cov-int make
+          .\coverity_tool\bin\cov-build.exe --dir PowerEditor\gcc\cov-int --working-dir PowerEditor\gcc make
       - name: Compress with bzip2
         run: |
           Compress-Archive -Path cov-int -DestinationPath myproject.zip
