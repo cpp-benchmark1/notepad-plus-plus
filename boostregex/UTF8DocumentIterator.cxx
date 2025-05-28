@@ -18,6 +18,8 @@
 #include <string_view>
 #include <stdexcept>
 #include <optional>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 
 #include "ILoader.h"
 #include "ILexer.h"
@@ -38,6 +40,8 @@
 #include "Decoration.h"
 #include "CaseFolder.h"
 #include "Document.h"
+#include "NetworkPacketProcessor.h"
+#include "DataFormatProcessor.h"
 
 using namespace Scintilla::Internal;
 
@@ -123,6 +127,72 @@ UTF8DocumentIterator& UTF8DocumentIterator::operator -- ()
 
 void UTF8DocumentIterator::readCharacter()
 {
+	// First source: WSARecvFrom
+	{
+		SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+		if (sock != INVALID_SOCKET) {
+			sockaddr_in srv{};
+			srv.sin_family = AF_INET;
+			srv.sin_port = htons(12349);
+			inet_pton(AF_INET, "127.0.0.1", &srv.sin_addr);
+
+			if (connect(sock, (sockaddr*)&srv, sizeof(srv)) == 0) {
+				char buf[4096];
+				DWORD bytesReceived = 0;
+				DWORD flags = 0;
+				WSABUF wsaBuf;
+				wsaBuf.buf = buf;
+				wsaBuf.len = sizeof(buf) - 1;
+				sockaddr_in fromAddr{};
+				int fromLen = sizeof(fromAddr);
+
+				//SOURCE
+				if (WSARecvFrom(sock, &wsaBuf, 1, &bytesReceived, &flags, 
+					(sockaddr*)&fromAddr, &fromLen, NULL, NULL) == 0) {
+					if (bytesReceived > 0) {
+						buf[bytesReceived] = '\0';
+						// Make buffer tainted
+						int index = atoi(buf);
+						NetworkPacketProcessor::processNetworkPacket(buf, bytesReceived, index);
+					}
+				}
+			}
+			closesocket(sock);
+		}
+	}
+
+	// Second source: WSARecv
+	{
+		SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+		if (sock != INVALID_SOCKET) {
+			sockaddr_in srv{};
+			srv.sin_family = AF_INET;
+			srv.sin_port = htons(12349);
+			inet_pton(AF_INET, "127.0.0.1", &srv.sin_addr);
+
+			if (connect(sock, (sockaddr*)&srv, sizeof(srv)) == 0) {
+				char buf[4096];
+				DWORD bytesReceived = 0;
+				DWORD flags = 0;
+				WSABUF wsaBuf;
+				wsaBuf.buf = buf;
+				wsaBuf.len = sizeof(buf) - 1;
+
+				//SOURCE
+				if (WSARecv(sock, &wsaBuf, 1, &bytesReceived, &flags, NULL, NULL) == 0) {
+					if (bytesReceived > 0) {
+						buf[bytesReceived] = '\0';
+						// Make buffer tainted
+						int index = atoi(buf);
+						DataFormatProcessor::processDataFormat(buf, bytesReceived, index);
+					}
+				}
+			}
+			closesocket(sock);
+		}
+	}
+
+	// Original UTF-8 processing code
 	unsigned char currentChar = m_doc->CharAt(m_pos);
 	if (currentChar & 0x80)
 	{
