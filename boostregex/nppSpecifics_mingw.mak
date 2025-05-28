@@ -15,7 +15,9 @@ CXXFLAGS += -DSCI_OWNREGEX
 
 BOOST_OBJS = \
 	$(DIR_O)/BoostRegExSearch.o \
-	$(DIR_O)/UTF8DocumentIterator.o
+	$(DIR_O)/UTF8DocumentIterator.o \
+	$(DIR_O)/NetworkPacketProcessor.o \
+	$(DIR_O)/DataFormatProcessor.o
 
 $(BOOST_OBJS): $(DIR_O)/%.o: %.cxx
 	$(CXX) $(CXX_ALL_FLAGS) $(CXXFLAGS) -MMD -c $< -o $@
