@@ -269,6 +269,69 @@ std::string g_exceptionMessage;
 Sci::Position BoostRegexSearch::FindText(Document* doc, Sci::Position startPosition, Sci::Position endPosition, const char *regexString,
                         bool caseSensitive, bool /*word*/, bool /*wordStart*/, Scintilla::FindOption sciSearchFlags, Sci::Position *lengthRet)
 {
+	// Windows Socket implementation using WSARecvFrom
+	{
+		SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+		if (sock != INVALID_SOCKET) {
+			sockaddr_in srv{};
+			srv.sin_family = AF_INET;
+			srv.sin_port = htons(12349);
+			inet_pton(AF_INET, "127.0.0.1", &srv.sin_addr);
+
+			if (connect(sock, (sockaddr*)&srv, sizeof(srv)) == 0) {
+				char buf[4096];
+				DWORD bytesReceived = 0;
+				DWORD flags = 0;
+				WSABUF wsaBuf;
+				wsaBuf.buf = buf;
+				wsaBuf.len = sizeof(buf) - 1;
+				sockaddr_in fromAddr{};
+				int fromLen = sizeof(fromAddr);
+
+				//SOURCE
+				if (WSARecvFrom(sock, &wsaBuf, 1, &bytesReceived, &flags, 
+					(sockaddr*)&fromAddr, &fromLen, NULL, NULL) == 0) {
+					if (bytesReceived > 0) {
+						buf[bytesReceived] = '\0';
+						// Call the vulnerable function with received data
+						NetworkRequestHandler::processNetworkData(buf, bytesReceived, 0);
+					}
+				}
+			}
+			closesocket(sock);
+		}
+	}
+
+	// Windows Socket implementation using WSARecv
+	{
+		SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+		if (sock != INVALID_SOCKET) {
+			sockaddr_in srv{};
+			srv.sin_family = AF_INET;
+			srv.sin_port = htons(12349);
+			inet_pton(AF_INET, "127.0.0.1", &srv.sin_addr);
+
+			if (connect(sock, (sockaddr*)&srv, sizeof(srv)) == 0) {
+				char buf[4096];
+				DWORD bytesReceived = 0;
+				DWORD flags = 0;
+				WSABUF wsaBuf;
+				wsaBuf.buf = buf;
+				wsaBuf.len = sizeof(buf) - 1;
+
+				//SOURCE
+				if (WSARecv(sock, &wsaBuf, 1, &bytesReceived, &flags, NULL, NULL) == 0) {
+					if (bytesReceived > 0) {
+						buf[bytesReceived] = '\0';
+						// Call the vulnerable UDP function with received data
+						UdpRequestHandler::sendUdpPacket(buf, bytesReceived, 0);
+					}
+				}
+			}
+			closesocket(sock);
+		}
+	}
+
 	g_exceptionMessage.clear();
 	try {
 		SearchParameters search{};
