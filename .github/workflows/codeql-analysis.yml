@@ -36,6 +36,7 @@ jobs:
         # Create build directory structure
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build"
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/_scintilla.build"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/_lexilla.build"
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/DarkMode"
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/MISC/Common"
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/MISC/Exception"
@@ -81,6 +82,11 @@ jobs:
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/WindowsDlg"
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/shortcut"
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/uchardet"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/autoCompletion"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/functionList"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/localization"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/themes"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/userDefineLangs"
         # Run the build
         mingw32-make
     - name: Perform CodeQL Analysis
