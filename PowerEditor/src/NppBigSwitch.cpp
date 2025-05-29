@@ -18,7 +18,8 @@
 #include <algorithm>
 #include <shlwapi.h>
 #include <uxtheme.h> // for EnableThemeDialogTexture
-#include <format>
+#include <sstream>
+#include <iomanip>
 #include <windowsx.h> // for GET_X_LPARAM, GET_Y_LPARAM
 #include "Notepad_plus_Window.h"
 #include "TaskListDlg.h"
@@ -39,6 +40,12 @@ using namespace std;
 #define WM_DPICHANGED 0x02E0
 #endif
 
+// Helper function for hex formatting
+std::string formatHex(HRESULT hr) {
+    std::stringstream ss;
+    ss << "0x" << std::setfill('0') << std::setw(8) << std::hex << hr;
+    return ss.str();
+}
 
 struct SortTaskListPred final
 {
@@ -105,7 +112,7 @@ bool SetOSAppRestart()
 					if (nppParam.doNppLogNulContentCorruptionIssue())
 					{
 						std::string msg = "ERROR: UnregisterApplicationRestart WINAPI failed! (HRESULT: ";
-						msg += std::format("{:#010x}", hr);
+						msg += formatHex(hr);
 						msg += ")";
 						writeLog(nppIssueLog.c_str(), msg.c_str());
 					}
@@ -116,7 +123,7 @@ bool SetOSAppRestart()
 				if (nppParam.doNppLogNulContentCorruptionIssue())
 				{
 					std::string msg = "ERROR: GetApplicationRestartSettings WINAPI failed! (HRESULT: ";
-					msg += std::format("{:#010x}", hr);
+					msg += formatHex(hr);
 					msg += ")";
 					writeLog(nppIssueLog.c_str(), msg.c_str());
 				}
@@ -157,7 +164,7 @@ bool SetOSAppRestart()
 				if (nppParam.doNppLogNulContentCorruptionIssue())
 				{
 					std::string msg = "ERROR: RegisterApplicationRestart WINAPI failed! (HRESULT: ";
-					msg += std::format("{:#010x}", hr);
+					msg += formatHex(hr);
 					msg += ")";
 					writeLog(nppIssueLog.c_str(), msg.c_str());
 				}
