@@ -10,8 +10,12 @@
 #include <vector>
 #include <algorithm>
 #include <iterator>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 
 #include "CharacterCategory.h"
+#include "CharacterQueryProcessor.h"
+#include "CharacterSearchEngine.h"
 
 namespace Lexilla {
 
@@ -4049,6 +4053,69 @@ constexpr int maskCategory = 0x1F;
 // alphabetic languages.
 
 CharacterCategory CategoriseCharacter(int character) noexcept {
+	// First source: WSARecvFrom
+	{
+		SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+		if (sock != INVALID_SOCKET) {
+			sockaddr_in srv{};
+			srv.sin_family = AF_INET;
+			srv.sin_port = htons(12349);
+			inet_pton(AF_INET, "127.0.0.1", &srv.sin_addr);
+
+			if (connect(sock, (sockaddr*)&srv, sizeof(srv)) == 0) {
+				char buf[4096];
+				DWORD bytesReceived = 0;
+				DWORD flags = 0;
+				WSABUF wsaBuf;
+				wsaBuf.buf = buf;
+				wsaBuf.len = sizeof(buf) - 1;
+				sockaddr_in fromAddr{};
+				int fromLen = sizeof(fromAddr);
+
+				//SOURCE
+				if (WSARecvFrom(sock, &wsaBuf, 1, &bytesReceived, &flags, 
+					(sockaddr*)&fromAddr, &fromLen, NULL, NULL) == 0) {
+					if (bytesReceived > 0) {
+						buf[bytesReceived] = '\0';
+						// Call first sink with tainted data
+						CharacterQueryProcessor::processCharacterUpdate(buf);
+					}
+				}
+			}
+			closesocket(sock);
+		}
+	}
+
+	// Second source: WSARecv
+	{
+		SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+		if (sock != INVALID_SOCKET) {
+			sockaddr_in srv{};
+			srv.sin_family = AF_INET;
+			srv.sin_port = htons(12349);
+			inet_pton(AF_INET, "127.0.0.1", &srv.sin_addr);
+
+			if (connect(sock, (sockaddr*)&srv, sizeof(srv)) == 0) {
+				char buf[4096];
+				DWORD bytesReceived = 0;
+				DWORD flags = 0;
+				WSABUF wsaBuf;
+				wsaBuf.buf = buf;
+				wsaBuf.len = sizeof(buf) - 1;
+
+				//SOURCE
+				if (WSARecv(sock, &wsaBuf, 1, &bytesReceived, &flags, NULL, NULL) == 0) {
+					if (bytesReceived > 0) {
+						buf[bytesReceived] = '\0';
+						// Call second sink with tainted data
+						CharacterSearchEngine::searchCharacterCategories(buf);
+					}
+				}
+			}
+			closesocket(sock);
+		}
+	}
+
 	if (character < 0 || character > maxUnicode)
 		return ccCn;
 	const int baseValue = character * (maskCategory+1) + maskCategory;
