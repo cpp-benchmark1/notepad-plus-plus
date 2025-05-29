@@ -32,8 +32,67 @@ jobs:
     - if: matrix.build-mode == 'manual'
       shell: powershell
       run: |
-          cd PowerEditor\gcc
-          mingw32-make
+        Set-Location PowerEditor\gcc
+        # Create build directory structure
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/_scintilla.build"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/_lexilla.build"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/DarkMode"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/MISC/Common"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/MISC/Exception"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/MISC/PluginsManager"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/MISC/Process"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/MISC/RegExt"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/MISC/md5"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/MISC/sha1"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/MISC/sha2"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/MISC/sha512"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/ScintillaComponent"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/TinyXml"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/TinyXml/tinyXmlA"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/AboutDlg"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/AnsiCharPanel"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/ClipboardHistory"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/ColourPicker"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/ContextMenu"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/DockingWnd"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/DocumentMap"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/DoubleBuffer"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/FileBrowser"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/FindCharsInRange"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/FunctionList"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/Grid"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/ImageListSet"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/OpenSaveFileDialog"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/PluginsAdmin"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/Preference"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/ProjectPanel"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/ReadDirectoryChanges"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/SplitterContainer"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/StaticDialog"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/StaticDialog/RunDlg"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/StatusBar"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/TabBar"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/TaskList"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/ToolBar"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/ToolTip"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/TrayIcon"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/TreeView"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/VerticalFileSwitcher"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/WindowsDlg"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/WinControls/shortcut"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/uchardet"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/autoCompletion"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/functionList"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/localization"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/themes"
+        New-Item -ItemType Directory -Force -Path "bin.x86_64.build/userDefineLangs"
+        # Copy gcc-fixes.h to scintilla/gcc directory
+        New-Item -ItemType Directory -Force -Path "../../scintilla/gcc"
+        Copy-Item -Path "gcc-fixes.h" -Destination "../../scintilla/gcc/gcc-fixes.h"
+        # Set C++20 flag and run the build
+        $env:CXXFLAGS="-std=c++20"
+        mingw32-make
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
