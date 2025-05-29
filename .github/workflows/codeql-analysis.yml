@@ -90,8 +90,9 @@ jobs:
         # Copy gcc-fixes.h to scintilla/gcc directory
         New-Item -ItemType Directory -Force -Path "../../scintilla/gcc"
         Copy-Item -Path "gcc-fixes.h" -Destination "../../scintilla/gcc/gcc-fixes.h"
-        # Set C++20 flag and run the build
-        $env:CXXFLAGS="-std=c++20"
+        # Set C++20 flags and run the build
+        $env:CXXFLAGS="-std=c++20 -D_GLIBCXX_USE_CXX11_ABI=1"
+        $env:CXX="g++-13"
         mingw32-make
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
