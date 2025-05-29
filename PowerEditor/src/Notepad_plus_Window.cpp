@@ -17,6 +17,10 @@
 
 #include <shlwapi.h>
 #include "Notepad_plus_Window.h"
+#include <chrono>
+#include <iomanip>
+#include <sstream>
+#include <string>
 
 HWND Notepad_plus_Window::gNppHWND = NULL;
 
@@ -171,6 +175,19 @@ void Notepad_plus_Window::init(HINSTANCE hInst, HWND parent, const wchar_t *cmdL
 		std::chrono::steady_clock::time_point sessionLoadingStartTP = std::chrono::steady_clock::now();
 		_notepad_plus_plus_core.loadLastSession();
 		sessionLoadingTime = std::chrono::steady_clock::now() - sessionLoadingStartTP;
+		
+		if (sessionLoadingTime.count() > 0)
+		{
+			std::wstringstream wss;
+			auto hms = std::chrono::hh_mm_ss{ std::chrono::duration_cast<std::chrono::milliseconds>(sessionLoadingTime) };
+			std::wstringstream timeStr;
+			timeStr << std::setfill(L'0') << std::setw(2) << hms.hours().count() << L":"
+				   << std::setw(2) << hms.minutes().count() << L":"
+				   << std::setw(2) << hms.seconds().count() << L"."
+				   << std::setw(3) << hms.subseconds().count();
+			wss << L"Last session loading: " << timeStr.str() << std::endl;
+			// TODO: Use wss.str() to display the message
+		}
 	}
 
 	if (nppParams.doFunctionListExport() || nppParams.doPrintAndExit())
@@ -391,11 +408,29 @@ void Notepad_plus_Window::init(HINSTANCE hInst, HWND parent, const wchar_t *cmdL
 	{
 		std::chrono::steady_clock::duration nppInitTime = (std::chrono::steady_clock::now() - g_nppStartTimePoint) - g_pluginsLoadingTime - sessionLoadingTime - cmdlineParamsLoadingTime;
 		std::wstringstream wss;
-		wss << L"Notepad++ initialization: " << std::chrono::hh_mm_ss{ std::chrono::duration_cast<std::chrono::milliseconds>(nppInitTime) } << std::endl;
-		wss << L"Plugins loading: " << std::chrono::hh_mm_ss{ std::chrono::duration_cast<std::chrono::milliseconds>(g_pluginsLoadingTime) } << std::endl;
-		wss << L"Last session loading: " << std::chrono::hh_mm_ss{ std::chrono::duration_cast<std::chrono::milliseconds>(sessionLoadingTime) } << std::endl;
-		wss << L"Command line params handling: " << std::chrono::hh_mm_ss{ std::chrono::duration_cast<std::chrono::milliseconds>(cmdlineParamsLoadingTime) } << std::endl;
-		wss << L"Total loading time: " << std::chrono::hh_mm_ss{ std::chrono::duration_cast<std::chrono::milliseconds>(nppInitTime + g_pluginsLoadingTime + sessionLoadingTime + cmdlineParamsLoadingTime) };
+		
+		auto formatDuration = [](const std::chrono::steady_clock::duration& duration) -> std::wstring {
+			auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+			auto hours = std::chrono::duration_cast<std::chrono::hours>(ms);
+			ms -= hours;
+			auto minutes = std::chrono::duration_cast<std::chrono::minutes>(ms);
+			ms -= minutes;
+			auto seconds = std::chrono::duration_cast<std::chrono::seconds>(ms);
+			ms -= seconds;
+			
+			std::wstringstream ss;
+			ss << std::setfill(L'0') << std::setw(2) << hours.count() << L":"
+			   << std::setw(2) << minutes.count() << L":"
+			   << std::setw(2) << seconds.count() << L"."
+			   << std::setw(3) << ms.count();
+			return ss.str();
+		};
+		
+		wss << L"Notepad++ initialization: " << formatDuration(nppInitTime) << std::endl;
+		wss << L"Plugins loading: " << formatDuration(g_pluginsLoadingTime) << std::endl;
+		wss << L"Last session loading: " << formatDuration(sessionLoadingTime) << std::endl;
+		wss << L"Command line params handling: " << formatDuration(cmdlineParamsLoadingTime) << std::endl;
+		wss << L"Total loading time: " << formatDuration(nppInitTime + g_pluginsLoadingTime + sessionLoadingTime + cmdlineParamsLoadingTime);
 		::MessageBoxW(NULL, wss.str().c_str(), L"Notepad++ loading time (hh:mm:ss.ms)", MB_OK);
 	}
 
