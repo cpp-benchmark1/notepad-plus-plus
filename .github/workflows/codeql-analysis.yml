@@ -87,7 +87,8 @@ jobs:
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/localization"
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/themes"
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/userDefineLangs"
-        # Run the build
+        # Set C++20 flag and run the build
+        $env:CXXFLAGS="-std=c++20"
         mingw32-make
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
