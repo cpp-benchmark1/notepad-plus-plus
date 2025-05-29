@@ -91,8 +91,15 @@ jobs:
         New-Item -ItemType Directory -Force -Path "../../scintilla/gcc"
         Copy-Item -Path "gcc-fixes.h" -Destination "../../scintilla/gcc/gcc-fixes.h"
         # Set C++20 flags and run the build
-        $env:CXXFLAGS="-std=c++20 -D_GLIBCXX_USE_CXX11_ABI=1"
         $env:CXX="g++-13"
+        $env:CXXFLAGS="-std=c++20 -D_GLIBCXX_USE_CXX11_ABI=1"
+        $env:CPPFLAGS="-std=c++20"
+        $env:LDFLAGS="-std=c++20"
+        # Create a temporary makefile with C++20 flags
+        $makefileContent = Get-Content makefile
+        $makefileContent = $makefileContent -replace 'CXXFLAGS := .*', 'CXXFLAGS := -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=1'
+        $makefileContent | Set-Content makefile.tmp
+        Move-Item -Force makefile.tmp makefile
         mingw32-make
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
