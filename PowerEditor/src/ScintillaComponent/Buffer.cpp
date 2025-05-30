@@ -1689,7 +1689,7 @@ bool FileManager::loadFileData(Document doc, int64_t fileSize, const wchar_t * f
 	EolType format = EolType::unknown;
 	int sciStatus = SC_STATUS_OK;
 	wchar_t szException[64] = {'\0'};
-	__try
+	try
 	{
 		// First allocate enough memory for the whole file (this will reduce memory copy during loading)
 		_pscratchTilla->execute(SCI_ALLOCATE, WPARAM(bufferSizeRequested));
@@ -1777,7 +1777,7 @@ bool FileManager::loadFileData(Document doc, int64_t fileSize, const wchar_t * f
 		}
 		while (lenFile > 0);
 	}
-	__except (EXCEPTION_EXECUTE_HANDLER)
+	try
 	{
 		switch (sciStatus)
 		{
@@ -1815,6 +1815,30 @@ bool FileManager::loadFileData(Document doc, int64_t fileSize, const wchar_t * f
 				0,
 				szException);
 		}
+		success = false;
+	}
+	catch (const std::exception& e)
+	{
+		_stprintf_s(szException, _countof(szException), L"Exception: %hs", e.what());
+		pNativeSpeaker->messageBox("FileLoadingException",
+			_pNotepadPlus->_pEditView->getHSelf(),
+			L"An error occurred while loading the file!",
+			L"Exception code: $STR_REPLACE$",
+			MB_OK | MB_APPLMODAL,
+			0,
+			szException);
+		success = false;
+	}
+	catch (...)
+	{
+		_stprintf_s(szException, _countof(szException), L"Unknown exception");
+		pNativeSpeaker->messageBox("FileLoadingException",
+			_pNotepadPlus->_pEditView->getHSelf(),
+			L"An error occurred while loading the file!",
+			L"Exception code: $STR_REPLACE$",
+			MB_OK | MB_APPLMODAL,
+			0,
+			szException);
 		success = false;
 	}
 
