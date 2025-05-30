@@ -87,6 +87,9 @@ jobs:
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/localization"
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/themes"
         New-Item -ItemType Directory -Force -Path "bin.x86_64.build/userDefineLangs"
+        # Create bin.x86_64 directory and change.log
+        New-Item -ItemType Directory -Force -Path "bin.x86_64"
+        New-Item -ItemType File -Force -Path "../bin/change.log" -Value "Initial change log"
         # Copy gcc-fixes.h to scintilla/gcc directory
         New-Item -ItemType Directory -Force -Path "../../scintilla/gcc"
         Copy-Item -Path "gcc-fixes.h" -Destination "../../scintilla/gcc/gcc-fixes.h"
