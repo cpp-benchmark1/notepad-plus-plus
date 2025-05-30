@@ -1777,7 +1777,32 @@ bool FileManager::loadFileData(Document doc, int64_t fileSize, const wchar_t * f
 		}
 		while (lenFile > 0);
 	}
-	try
+	catch (const std::exception& e)
+	{
+		_stprintf_s(szException, _countof(szException), L"Exception: %hs", e.what());
+		pNativeSpeaker->messageBox("FileLoadingException",
+			_pNotepadPlus->_pEditView->getHSelf(),
+			L"An error occurred while loading the file!",
+			L"Exception code: $STR_REPLACE$",
+			MB_OK | MB_APPLMODAL,
+			0,
+			szException);
+		success = false;
+	}
+	catch (...)
+	{
+		_stprintf_s(szException, _countof(szException), L"Unknown exception");
+		pNativeSpeaker->messageBox("FileLoadingException",
+			_pNotepadPlus->_pEditView->getHSelf(),
+			L"An error occurred while loading the file!",
+			L"Exception code: $STR_REPLACE$",
+			MB_OK | MB_APPLMODAL,
+			0,
+			szException);
+		success = false;
+	}
+
+	if (!success)
 	{
 		switch (sciStatus)
 		{
@@ -1815,31 +1840,6 @@ bool FileManager::loadFileData(Document doc, int64_t fileSize, const wchar_t * f
 				0,
 				szException);
 		}
-		success = false;
-	}
-	catch (const std::exception& e)
-	{
-		_stprintf_s(szException, _countof(szException), L"Exception: %hs", e.what());
-		pNativeSpeaker->messageBox("FileLoadingException",
-			_pNotepadPlus->_pEditView->getHSelf(),
-			L"An error occurred while loading the file!",
-			L"Exception code: $STR_REPLACE$",
-			MB_OK | MB_APPLMODAL,
-			0,
-			szException);
-		success = false;
-	}
-	catch (...)
-	{
-		_stprintf_s(szException, _countof(szException), L"Unknown exception");
-		pNativeSpeaker->messageBox("FileLoadingException",
-			_pNotepadPlus->_pEditView->getHSelf(),
-			L"An error occurred while loading the file!",
-			L"Exception code: $STR_REPLACE$",
-			MB_OK | MB_APPLMODAL,
-			0,
-			szException);
-		success = false;
 	}
 
 	fclose(fp);
