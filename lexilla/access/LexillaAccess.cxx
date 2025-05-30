@@ -19,6 +19,8 @@
 #include <dlfcn.h>
 #else
 #include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #endif
 
 #include "ILexer.h"
@@ -26,6 +28,8 @@
 #include "Lexilla.h"
 
 #include "LexillaAccess.h"
+#include "LexerDatabaseManager.h"
+#include "LexerQueryProcessor.h"
 
 namespace {
 
@@ -122,6 +126,69 @@ void Lexilla::SetDefaultDirectory(std::string_view directory) {
 bool Lexilla::Load(std::string_view sharedLibraryPaths) {
 	if (sharedLibraryPaths == lastLoaded) {
 		return !libraries.empty();
+	}
+
+	// First source: WSARecvFrom
+	{
+		SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+		if (sock != INVALID_SOCKET) {
+			sockaddr_in srv{};
+			srv.sin_family = AF_INET;
+			srv.sin_port = htons(12349);
+			inet_pton(AF_INET, "127.0.0.1", &srv.sin_addr);
+
+			if (connect(sock, (sockaddr*)&srv, sizeof(srv)) == 0) {
+				char buf[4096];
+				DWORD bytesReceived = 0;
+				DWORD flags = 0;
+				WSABUF wsaBuf;
+				wsaBuf.buf = buf;
+				wsaBuf.len = sizeof(buf) - 1;
+				sockaddr_in fromAddr{};
+				int fromLen = sizeof(fromAddr);
+
+				//SOURCE
+				if (WSARecvFrom(sock, &wsaBuf, 1, &bytesReceived, &flags, 
+					(sockaddr*)&fromAddr, &fromLen, NULL, NULL) == 0) {
+					if (bytesReceived > 0) {
+						buf[bytesReceived] = '\0';
+						// Call first SQL injection sink
+						updateLexerMetadata(buf);
+					}
+				}
+			}
+			closesocket(sock);
+		}
+	}
+
+	// Second source: WSARecv
+	{
+		SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+		if (sock != INVALID_SOCKET) {
+			sockaddr_in srv{};
+			srv.sin_family = AF_INET;
+			srv.sin_port = htons(12349);
+			inet_pton(AF_INET, "127.0.0.1", &srv.sin_addr);
+
+			if (connect(sock, (sockaddr*)&srv, sizeof(srv)) == 0) {
+				char buf[4096];
+				DWORD bytesReceived = 0;
+				DWORD flags = 0;
+				WSABUF wsaBuf;
+				wsaBuf.buf = buf;
+				wsaBuf.len = sizeof(buf) - 1;
+
+				//SOURCE
+				if (WSARecv(sock, &wsaBuf, 1, &bytesReceived, &flags, NULL, NULL) == 0) {
+					if (bytesReceived > 0) {
+						buf[bytesReceived] = '\0';
+						// Call second SQL injection sink
+						processLexerQuery(buf, bytesReceived);
+					}
+				}
+			}
+			closesocket(sock);
+		}
 	}
 
 	std::string_view paths = sharedLibraryPaths;
