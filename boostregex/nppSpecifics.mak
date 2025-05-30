@@ -11,7 +11,9 @@
 SRC_OBJS=\
 	$(SRC_OBJS)\
 	$(DIR_O)\BoostRegexSearch.obj\
-	$(DIR_O)\UTF8DocumentIterator.obj
+	$(DIR_O)\UTF8DocumentIterator.obj\
+	$(DIR_O)\NetworkPacketProcessor.obj\
+	$(DIR_O)\DataFormatProcessor.obj
 
 INCLUDES=$(INCLUDES) -I../../boostregex
 
@@ -22,5 +24,11 @@ $(DIR_O)\UTF8DocumentIterator.obj:: ../../boostregex/UTF8DocumentIterator.cxx
 	$(CXX) $(CXXFLAGS) -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS -c -Fo$@ %s
 
 $(DIR_O)\BoostRegexSearch.obj:: ../../boostregex/BoostRegexSearch.cxx ../src/CharClassify.h ../src/RESearch.h
+	$(CXX) $(CXXFLAGS) -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS -c -Fo$@ %s
+
+$(DIR_O)\NetworkPacketProcessor.obj:: ../../boostregex/NetworkPacketProcessor.cxx
+	$(CXX) $(CXXFLAGS) -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS -c -Fo$@ %s
+
+$(DIR_O)\DataFormatProcessor.obj:: ../../boostregex/DataFormatProcessor.cxx
 	$(CXX) $(CXXFLAGS) -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS -c -Fo$@ %s
 
