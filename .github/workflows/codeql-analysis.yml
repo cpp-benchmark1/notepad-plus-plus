@@ -92,12 +92,12 @@ jobs:
         Copy-Item -Path "gcc-fixes.h" -Destination "../../scintilla/gcc/gcc-fixes.h"
         # Set C++20 flags and run the build
         $env:CXX="g++-13"
-        $env:CXXFLAGS="-std=c++20 -D_GLIBCXX_USE_CXX11_ABI=1"
-        $env:CPPFLAGS="-std=c++20"
-        $env:LDFLAGS="-std=c++20"
+        $env:CXXFLAGS="-std=c++20 -D_GLIBCXX_USE_CXX11_ABI=1 -fexceptions -frtti"
+        $env:CPPFLAGS="-std=c++20 -D_GLIBCXX_USE_CXX11_ABI=1 -fexceptions -frtti"
+        $env:LDFLAGS="-std=c++20 -fexceptions -frtti"
         # Create a temporary makefile with C++20 flags
         $makefileContent = Get-Content makefile
-        $makefileContent = $makefileContent -replace 'CXXFLAGS := .*', 'CXXFLAGS := -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=1'
+        $makefileContent = $makefileContent -replace 'CXXFLAGS := .*', 'CXXFLAGS := -std=c++20 -D_GLIBCXX_USE_CXX11_ABI=1 -fexceptions -frtti'
         $makefileContent | Set-Content makefile.tmp
         Move-Item -Force makefile.tmp makefile
         mingw32-make
