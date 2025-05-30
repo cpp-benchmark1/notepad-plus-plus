@@ -93,12 +93,9 @@ jobs:
         # Copy necessary XML files
         Copy-Item -Path "../src/contextMenu.xml" -Destination "bin.x86_64/contextMenu.xml" -Force
         Copy-Item -Path "../src/shortcuts.xml" -Destination "bin.x86_64/shortcuts.xml" -Force
-        Copy-Item -Path "../src/config.xml" -Destination "bin.x86_64/config.xml" -Force
-        Copy-Item -Path "../src/stylers.xml" -Destination "bin.x86_64/stylers.xml" -Force
-        Copy-Item -Path "../src/contextMenu.xml" -Destination "bin.x86_64/contextMenu.xml" -Force
-        Copy-Item -Path "../src/functionList.xml" -Destination "bin.x86_64/functionList.xml" -Force
-        Copy-Item -Path "../src/langs.xml" -Destination "bin.x86_64/langs.xml" -Force
-        Copy-Item -Path "../src/plugins/plugins.xml" -Destination "bin.x86_64/plugins.xml" -Force
+        Copy-Item -Path "../src/stylers.model.xml" -Destination "bin.x86_64/stylers.xml" -Force
+        Copy-Item -Path "../src/langs.model.xml" -Destination "bin.x86_64/langs.xml" -Force
+        Copy-Item -Path "../src/toolbarIcons.xml" -Destination "bin.x86_64/toolbarIcons.xml" -Force
         # Copy gcc-fixes.h to scintilla/gcc directory
         New-Item -ItemType Directory -Force -Path "../../scintilla/gcc"
         Copy-Item -Path "gcc-fixes.h" -Destination "../../scintilla/gcc/gcc-fixes.h"
