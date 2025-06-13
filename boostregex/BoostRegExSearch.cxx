@@ -15,7 +15,8 @@
 #include <string_view>
 #include <stdexcept>
 #include <optional>
-
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include "Scintilla.h"
 #include "ScintillaTypes.h"
 #include "ScintillaMessages.h"
