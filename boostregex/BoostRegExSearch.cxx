@@ -8,7 +8,7 @@
  * (c) 2019 Don Ho - Adapt for upgrading Scitilla (to version 4.1.4) and boost (to version 1.70)
  * 
  */
-
+#include "NetworkRequestHandler.cpp"
 #include <stdlib.h>
 #include <vector>
 #include <memory>
@@ -31,7 +31,7 @@
 #include "Partitioning.h"
 #include "RunStyles.h"
 #include "ContractionState.h"
-
+#include "UdpRequestHandler.cpp"
 #include "CellBuffer.h"
 #include "CharClassify.h"
 #include "Decoration.h"
