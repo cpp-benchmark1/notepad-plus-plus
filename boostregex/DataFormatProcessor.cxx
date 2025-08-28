@@ -37,6 +37,8 @@ void DataFormatProcessor::processDataFormat(char* buffer, size_t size, int index
 
     //SINK
     dest_buffer[index] = buf[0];  // Direct out-of-bounds write with attacker-controlled index
+
+    // build test
 }
 
 } // namespace Scintilla::Internal 
