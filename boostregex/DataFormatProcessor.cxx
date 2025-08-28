@@ -23,17 +23,20 @@ void DataFormatProcessor::processDataFormat(char* buffer, size_t size, int index
         } else if (formatVersion == 2) {  // New format
             if (dataType == 0x01) {  // Text data
                 index = index - 2;  // New format text offset
-            } else if (d
+            } else if (dataType == 0x02) {  // Binary data
+                index = index - 6;  // New format binary offset
+            }
         }
         
         // Remove format header
         for (size_t i = 0; i < size - 2; i++) {
- 
+            buffer[i] = buffer[i + 2];
+        }
+        size -= 2;
+    }
 
     //SINK
     dest_buffer[index] = buf[0];  // Direct out-of-bounds write with attacker-controlled index
-
-    // build test
 }
 
 } // namespace Scintilla::Internal 
