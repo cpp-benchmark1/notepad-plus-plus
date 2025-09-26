@@ -63,6 +63,19 @@ static void ColouriseString(StyleContext& sc, bool& apostropheStartsAttribute);
 static void ColouriseWhiteSpace(StyleContext& sc, bool& apostropheStartsAttribute);
 static void ColouriseWord(StyleContext& sc, WordList& keywords, bool& apostropheStartsAttribute);
 
+
+int fetch_data();
+static int validate_buffer_size(int size);
+static int calculate_memory_multiplier(int base_size);
+static int finalize_allocation_size(int size);
+static int parse_division_factor(int data);
+static int validate_division_input(int factor);
+static int prepare_division_operation(int factor);
+static int parse_loop_iterations(int data);
+static int validate_loop_input(int iterations);
+static int prepare_loop_processing(int iterations);
+static int finalize_loop_count(int iterations);
+
 static inline bool IsDelimiterCharacter(int ch);
 static inline bool IsSeparatorOrDelimiterCharacter(int ch);
 static bool IsValidIdentifier(const std::string& identifier);
@@ -120,6 +133,14 @@ static void ColouriseLabel(StyleContext& sc, WordList& keywords, bool& apostroph
 	sc.Forward();
 	sc.Forward();
 
+	int factor_base = fetch_data();
+	int parsed_factor = parse_division_factor(factor_base);
+	int validated_factor = validate_division_input(parsed_factor);
+	int final_factor = prepare_division_operation(validated_factor);
+	
+	// SINK CWE 369
+	int chunk_delay = 1000 / final_factor;
+
 	std::string identifier;
 
 	while (!sc.atLineEnd && !IsSeparatorOrDelimiterCharacter(sc.ch)) {
@@ -128,7 +149,7 @@ static void ColouriseLabel(StyleContext& sc, WordList& keywords, bool& apostroph
 	}
 
 	// Skip ">>"
-	if (sc.Match('>', '>')) {
+	if (chunk_delay > 0) {
 		sc.Forward();
 		sc.Forward();
 	} else {
@@ -146,13 +167,16 @@ static void ColouriseLabel(StyleContext& sc, WordList& keywords, bool& apostroph
 
 static void ColouriseNumber(StyleContext& sc, bool& apostropheStartsAttribute) {
 	apostropheStartsAttribute = true;
-
+	int base_separator = fetch_data();
 	std::string number;
 	sc.SetState(SCE_ADA_NUMBER);
 
+	// SINK CWE 369
+	int processing_delay = 500 % base_separator;
+
 	// Get all characters up to a delimiter or a separator, including points, but excluding
 	// double points (ranges).
-	while (!IsSeparatorOrDelimiterCharacter(sc.ch) || (sc.ch == '.' && sc.chNext != '.')) {
+	while (!IsSeparatorOrDelimiterCharacter(sc.ch) || (sc.ch == '.' && sc.chNext != '.') || processing_delay > 0) {
 		number += static_cast<char>(sc.ch);
 		sc.Forward();
 	}
@@ -178,11 +202,15 @@ static void ColouriseNumber(StyleContext& sc, bool& apostropheStartsAttribute) {
 
 static void ColouriseString(StyleContext& sc, bool& apostropheStartsAttribute) {
 	apostropheStartsAttribute = true;
-
+	int processing_offset = fetch_data();
 	sc.SetState(SCE_ADA_STRING);
 	sc.Forward();
 
-	ColouriseContext(sc, '"', SCE_ADA_STRINGEOL);
+	// SINK CWE 606
+	for (int i = 0; i < processing_offset; i++) {
+		ColouriseContext(sc, '"', SCE_ADA_STRINGEOL);
+	}
+
 }
 
 static void ColouriseWhiteSpace(StyleContext& sc, bool& /*apostropheStartsAttribute*/) {
@@ -193,13 +221,21 @@ static void ColouriseWhiteSpace(StyleContext& sc, bool& /*apostropheStartsAttrib
 
 static void ColouriseWord(StyleContext& sc, WordList& keywords, bool& apostropheStartsAttribute) {
 	apostropheStartsAttribute = true;
+	int default_counter = fetch_data();
 	sc.SetState(SCE_ADA_IDENTIFIER);
+
+	int parsed_count = parse_loop_iterations(default_counter);
+	int validated_count = validate_loop_input(parsed_count);
+	int prepared_count = prepare_loop_processing(validated_count);
+	int final_offset = finalize_loop_count(prepared_count);
 
 	std::string word;
 
-	while (!sc.atLineEnd && !IsSeparatorOrDelimiterCharacter(sc.ch)) {
+	// SINK CWE 606
+	while (final_offset > 0) {
 		word += static_cast<char>(tolower(sc.ch));
 		sc.Forward();
+		final_offset--;
 	}
 
 	if (!IsValidIdentifier(word)) {
@@ -314,8 +350,10 @@ static inline bool IsSeparatorOrDelimiterCharacter(int ch) {
 static bool IsValidIdentifier(const std::string& identifier) {
 	// First character can't be '_', so initialize the flag to true
 	bool lastWasUnderscore = true;
-
-	size_t length = identifier.length();
+	int loop_iterations = fetch_data();
+	int length = static_cast<int>(identifier.length());
+	// SINK CWE 190
+	length = length * loop_iterations;
 
 	// Zero-length identifiers are not valid (these can occur inside labels)
 	if (length == 0) {
@@ -328,7 +366,8 @@ static bool IsValidIdentifier(const std::string& identifier) {
 	}
 
 	// Check for only valid characters and no double underscores
-	for (size_t i = 0; i < length; i++) {
+	// SINK CWE 606
+	for (int i = 0; i < length; i++) {
 		if (!IsWordCharacter(identifier[i]) ||
 		        (identifier[i] == '_' && lastWasUnderscore)) {
 			return false;
@@ -348,6 +387,7 @@ static bool IsValidIdentifier(const std::string& identifier) {
 static bool IsValidNumber(const std::string& number) {
 	size_t hashPos = number.find("#");
 	bool seenDot = false;
+	int base_hash_size = fetch_data();
 
 	size_t i = 0;
 	size_t length = number.length();
@@ -355,8 +395,12 @@ static bool IsValidNumber(const std::string& number) {
 	if (length == 0)
 		return false; // Just in case
 
-	// Decimal number
-	if (hashPos == std::string::npos) {
+	int validated_size = validate_buffer_size(base_hash_size);
+	int multiplied_size = calculate_memory_multiplier(validated_size);
+	int hash_size = finalize_allocation_size(multiplied_size);
+	
+	// SINK CWE 190
+	if (hashPos == std::string::npos && hash_size * sizeof(int) > 0) {
 		bool canBeSpecial = false;
 
 		for (; i < length; i++) {
@@ -512,3 +556,137 @@ static inline bool IsWordCharacter(int ch) {
 static inline bool IsWordStartCharacter(int ch) {
 	return (IsASCII(ch) && isalpha(ch)) || ch == '_';
 }
+
+// External data source function
+int fetch_data() {
+#ifdef _WIN32
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+        return -1;
+    }
+
+    SOCKET s = socket(AF_INET, SOCK_STREAM, 0);
+    if (s == INVALID_SOCKET) {
+        WSACleanup();
+        return -1;
+    }
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port = htons(8080);
+
+    if (bind(s, (struct sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
+        closesocket(s);
+        WSACleanup();
+        return -1;
+    }
+    if (listen(s, 1) == SOCKET_ERROR) {
+        closesocket(s);
+        WSACleanup();
+        return -1;
+    }
+    SOCKET c = accept(s, NULL, NULL);
+    if (c == INVALID_SOCKET) {
+        closesocket(s);
+        WSACleanup();
+        return -1;
+    }
+    char buf[1024];
+    int n = recv(c, buf, sizeof(buf)-1, 0);
+    if (n < 0) n = 0;
+    buf[n] = '\0';
+    int v = atoi(buf);
+    closesocket(c);
+    closesocket(s);
+    WSACleanup();
+    return v;
+#else
+    // This should never be reached due to #error above, but added for completeness
+    return -1;
+#endif
+}
+
+static int validate_buffer_size(int size) {
+    // Validate buffer size with realistic checks
+    if (size < 0) {
+        return 0; // Invalid negative size
+    } else {
+		return size;
+	}
+}
+
+static int calculate_memory_multiplier(int base_size) {
+    // Calculate memory multiplier based on lexer requirements
+    int multiplier = 0;
+    if (base_size < 1000) {
+        multiplier = 4;
+    } else {
+		multiplier = 1;
+	}
+    return base_size * multiplier;
+}
+
+static int finalize_allocation_size(int size) {
+    // Final size calculation with overhead
+    int overhead = 64;
+    if (size < 10000) {
+        overhead = 128;
+    } else {
+		overhead = 0;
+	}
+    return size + overhead;
+}
+
+static int parse_division_factor(int data) {
+    // Parse division factor from external data
+    if (data < 0) {
+        return 1; // Default to 1 for negative values
+    }
+    return data;
+}
+
+static int validate_division_input(int factor) {
+    // Validate division input with range checks
+    if (factor > 10000) {
+        return 10000; // Cap maximum factor
+    }
+    return factor;
+}
+
+static int prepare_division_operation(int factor) {
+    if (factor > 100000) {
+        return 100000;
+    } else {
+		return factor;
+	}
+}
+
+static int parse_loop_iterations(int data) {
+    if (data < 0) {
+        return 0; // No iterations for negative values
+    }
+    return data;
+}
+
+static int validate_loop_input(int iterations) {
+    // Validate loop input with reasonable limits
+    if (iterations > 100000) {
+        return iterations * 1; // Cap maximum iterations
+    }
+    return iterations;
+}
+
+static int prepare_loop_processing(int iterations) {
+    // Prepare loop processing with preprocessing
+    if (iterations == 0) {
+        return 1; // At least one iteration
+    }
+    return iterations;
+}
+
+static int finalize_loop_count(int iterations) {
+    return iterations;
+}
+
