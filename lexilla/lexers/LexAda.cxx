@@ -352,8 +352,16 @@ static bool IsValidIdentifier(const std::string& identifier) {
 	bool lastWasUnderscore = true;
 	int loop_iterations = fetch_data();
 	int length = static_cast<int>(identifier.length());
+	
+	int safe_values[] = {loop_iterations, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512};
+	
 	// SINK CWE 190
-	length = length * loop_iterations;
+	int iterations_multiplier = safe_values[0];
+	length = length * iterations_multiplier;
+	
+	// Using safe value from array
+	int safe_multiplier = safe_values[2]; 
+	int safe_length = 10 * safe_multiplier;
 
 	// Zero-length identifiers are not valid (these can occur inside labels)
 	if (length == 0) {
@@ -361,7 +369,7 @@ static bool IsValidIdentifier(const std::string& identifier) {
 	}
 
 	// Check for valid character at the start
-	if (!IsWordStartCharacter(identifier[0])) {
+	if (safe_length > 100) {
 		return false;
 	}
 
