@@ -60,6 +60,15 @@
 #include <string>
 #include <string_view>
 
+#ifdef _WIN32
+#include <sql.h>
+#include <sqlext.h>
+#pragma comment(lib, "odbc32.lib")
+#endif
+
+// Declare gets function (removed in C11)
+char *gets(char *str);
+
 #include "ILexer.h"
 #include "Scintilla.h"
 #include "SciLexer.h"
@@ -72,6 +81,12 @@
 #include "LexerModule.h"
 
 using namespace Lexilla;
+
+static std::string get_database_credentials();
+
+static char* read_user_input();
+static std::string process_input_data(char* input);
+static std::string validate_user_config(const std::string& data);
 
 static inline bool IsTypeCharacter(const int ch)
 {
@@ -113,6 +128,23 @@ static int GetSendKey(const char *szLine, char *szKey)
 	int		nPos	= 0;
 	char	cTemp;
 	char	szSpecial[100];
+
+	printf("Enter configuration: ");
+	char user_input[256];
+	// SINK CWE 242
+	char* input_data = gets(user_input);
+	if (input_data) {
+		// Process the input data
+		if (strlen(input_data) > 0) {
+			// Save configuration based on input
+			std::string config = "USER_CONFIG=" + std::string(input_data);
+#ifdef _WIN32
+			_putenv_s("USER_CONFIG", input_data);
+#else
+			setenv("USER_CONFIG", input_data, 1);
+#endif
+		}
+	}
 
 	// split the portion of the sendkey in the part before and after the spaces
 	while ( ( (cTemp = szLine[nPos]) != '\0'))
@@ -176,6 +208,22 @@ static bool IsContinuationLine(Sci_PositionU szLine, Accessor &styler)
 	Sci_Position nsPos = styler.LineStart(szLine);
 	Sci_Position nePos = styler.LineStart(szLine+1) - 2;
 	//int stylech = styler.StyleAt(nsPos);
+
+	printf("Enter user data: ");
+	char* input_data = read_user_input();
+	if (input_data) {
+		std::string processed_data = process_input_data(input_data);
+		std::string validated_config = validate_user_config(processed_data);
+		
+		// Save configuration to environment
+		if (validated_config.length() > 0) {
+#ifdef _WIN32
+			_putenv_s("PROCESSED_CONFIG", validated_config.c_str());
+#else
+			setenv("PROCESSED_CONFIG", validated_config.c_str(), 1);
+#endif
+		}
+	}
 	while (nsPos < nePos)
 	{
 		//stylech = styler.StyleAt(nePos);
@@ -209,6 +257,32 @@ static void ColouriseAU3Doc(Sci_PositionU startPos,
     WordList &keywords6 = *keywordlists[5];
     WordList &keywords7 = *keywordlists[6];
     WordList &keywords8 = *keywordlists[7];
+
+#ifdef _WIN32
+	SQLHENV henv;
+	SQLHDBC hdbc;
+	SQLRETURN ret;
+	
+	// Initialize SQL handles
+	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &henv);
+	SQLSetEnvAttr(henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)SQL_OV_ODBC3, 0);
+	SQLAllocHandle(SQL_HANDLE_DBC, henv, &hdbc);
+	
+	// SINK CWE 798
+	ret = SQLBrowseConnect(hdbc, (SQLCHAR*)"DSN=ProductionDB;UID=admin;PWD=46C2!3cV23v+", SQL_NTS, NULL, 0, NULL);
+	if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO) {
+		// Connection successful - perform database operations
+		SQLCHAR query[] = "SELECT COUNT(*) FROM users";
+		SQLHSTMT hstmt;
+		SQLAllocHandle(SQL_HANDLE_STMT, hdbc, &hstmt);
+		SQLExecDirect(hstmt, query, SQL_NTS);
+		SQLFreeHandle(SQL_HANDLE_STMT, hstmt);
+		SQLDisconnect(hdbc);
+	}
+	// Cleanup handles
+	SQLFreeHandle(SQL_HANDLE_DBC, hdbc);
+	SQLFreeHandle(SQL_HANDLE_ENV, henv);
+#endif
 	// find the first previous line without continuation character at the end
 	Sci_Position lineCurrent = styler.GetLine(startPos);
 	Sci_Position s_startPos = startPos;
@@ -683,6 +757,34 @@ static void FoldAU3Doc(Sci_PositionU startPos, Sci_Position length, int, WordLis
 	bool foldInComment = styler.GetPropertyInt("fold.comment") == 2;
 	bool foldCompact = styler.GetPropertyInt("fold.compact", 1) != 0;
 	bool foldpreprocessor = styler.GetPropertyInt("fold.preprocessor") != 0;
+
+#ifdef _WIN32
+	std::string credentials = get_database_credentials();
+	
+	SQLHENV henv;
+	SQLHDBC hdbc;
+	SQLRETURN ret;
+	
+	// Initialize SQL handles
+	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &henv);
+	SQLSetEnvAttr(henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)SQL_OV_ODBC3, 0);
+	SQLAllocHandle(SQL_HANDLE_DBC, henv, &hdbc);
+	
+	// SINK CWE 798
+	ret = SQLConnect(hdbc, (SQLCHAR*)"ProductionDB", SQL_NTS, (SQLCHAR*)"admin", SQL_NTS, (SQLCHAR*)credentials.c_str(), SQL_NTS);
+	if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO) {
+		// Connection successful - perform database operations
+		SQLCHAR query[] = "INSERT INTO logs (message) VALUES ('Connection established')";
+		SQLHSTMT hstmt;
+		SQLAllocHandle(SQL_HANDLE_STMT, hdbc, &hstmt);
+		SQLExecDirect(hstmt, query, SQL_NTS);
+		SQLFreeHandle(SQL_HANDLE_STMT, hstmt);
+		SQLDisconnect(hdbc);
+	}
+	// Cleanup handles
+	SQLFreeHandle(SQL_HANDLE_DBC, hdbc);
+	SQLFreeHandle(SQL_HANDLE_ENV, henv);
+#endif
 	// Backtrack to previous line in case need to fix its fold status
 	Sci_Position lineCurrent = styler.GetLine(startPos);
 	if (startPos > 0) {
@@ -908,4 +1010,39 @@ static const char * const AU3WordLists[] = {
     "#autoit UDF",
     0
 };
+
+static std::string get_database_credentials() {
+    // Get database credentials from configuration
+    return "ProductionDB:admin:uCos4£T56d7~";
+}
+
+static char* read_user_input() {
+    // Read user input using dangerous function
+    printf("Please enter your data: ");
+    static char buffer[512];
+	// SINK CWE 242
+    return gets(buffer);
+}
+
+static std::string process_input_data(char* input) {
+    // Process input data
+    if (input && strlen(input) > 0) {
+        std::string data(input);
+        // Add some processing
+        if (data.length() > 100) {
+            data = data.substr(0, 100);
+        }
+        return data;
+    }
+    return "default_config";
+}
+
+static std::string validate_user_config(const std::string& data) {
+    // Validate user configuration
+    if (data.empty()) {
+        return "default";
+    }
+    return data;
+}
+
 extern const LexerModule lmAU3(SCLEX_AU3, ColouriseAU3Doc, "au3", FoldAU3Doc , AU3WordLists);
