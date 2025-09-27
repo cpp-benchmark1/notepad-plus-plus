@@ -41,18 +41,17 @@ jobs:
         shell: pwsh
       - name: Build with Coverity
         run: |
-          $covPath = Join-Path $PWD 'cov-analysis-win64-2024.6.1\bin\cov-build.exe'
-          Write-Output "✅ Resolved Coverity path: $covPath"
-        
-          if (Test-Path $covPath) {
-            Write-Output "📦 Coverity build tool found. Running build..."
-            New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
-            cd PowerEditor\gcc
-            & $covPath --dir "$env:GITHUB_WORKSPACE\cov-int" make
-          } else {
-            Write-Error "Could not find Coverity executable at $covPath"
+          # Encontrar automaticamente o executável cov-build.exe
+          $covBuildExe = Get-ChildItem -Path $PWD -Recurse -Filter "cov-build.exe" | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $covBuildExe) {
+            Write-Error "Could not find cov-build.exe anywhere in $PWD"
             exit 1
           }
+          Write-Output "✅ Found Coverity build tool at: $covBuildExe"
+
+          New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
+          cd PowerEditor\gcc
+          & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make
       - name: Upload Coverity build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
