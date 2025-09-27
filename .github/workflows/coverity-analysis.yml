@@ -48,9 +48,9 @@ jobs:
           if (Test-Path $covPath) {
             Write-Output "📦 Coverity build tool found. Running build..."
             cd PowerEditor\gcc
-            & $covPath --dir ../../cov-int make || true
+            & $covPath --dir "$env:GITHUB_WORKSPACE\cov-int" make || true
           } else {
-            Write-Error "❌ Could not find Coverity executable at $covPath"
+            Write-Error "Could not find Coverity executable at $covPath"
             exit 1
           }
       - name: Upload Coverity build log on failure
@@ -58,10 +58,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverity-build-log
-          path: PowerEditor/gcc/cov-int/build-log.txt
+          path: cov-int/build-log.txt
       - name: Compress with bzip2
         run: |
-          Compress-Archive -Path cov-int -DestinationPath myproject.zip
+          if (!(Test-Path "$env:GITHUB_WORKSPACE\cov-int")) {
+            Write-Error "cov-int not found at $env:GITHUB_WORKSPACE\cov-int"
+            exit 1
+          }
+          Compress-Archive -Path "$env:GITHUB_WORKSPACE\cov-int" -DestinationPath "$env:GITHUB_WORKSPACE\myproject.zip"
         id: compress
       - name: Create GitHub Release
         id: create_release
