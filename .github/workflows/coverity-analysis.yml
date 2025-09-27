@@ -29,6 +29,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+
       - name: Download and Install Coverity Tool
         run: |
           Invoke-WebRequest -Uri "https://scan.coverity.com/download/win64" -Method Post -Body "token=${{ secrets.COVERITY_TOKEN }}&project=${{ github.repository }}" -OutFile "coverity_tool.zip"
@@ -36,12 +37,22 @@ jobs:
           unzip coverity_tool.zip
           $Env:PATH = "$PWD\coverity_tool\bin;$Env:PATH"
           Write-Output "Coverity Tool installed successfully"
+
       - name: Prepend Git usr/bin to PATH
         run: echo "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: pwsh
+
+      - name: Install MSYS2 and dependencies
+        run: |
+          choco install msys2 -y
+          refreshenv
+          C:\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
+          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-curl"
+          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: pwsh
+
       - name: Build with Coverity
         run: |
-          # Encontrar automaticamente o executável cov-build.exe
           $covBuildExe = Get-ChildItem -Path $PWD -Recurse -Filter "cov-build.exe" | Select-Object -First 1 -ExpandProperty FullName
           if (-not $covBuildExe) {
             Write-Error "Could not find cov-build.exe anywhere in $PWD"
@@ -52,12 +63,15 @@ jobs:
           New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
           cd PowerEditor\gcc
           & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make
+        shell: pwsh
+
       - name: Upload Coverity build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: coverity-build-log
           path: cov-int/build-log.txt
+
       - name: Compress with bzip2
         run: |
           if (!(Test-Path "$env:GITHUB_WORKSPACE\cov-int")) {
@@ -66,6 +80,7 @@ jobs:
           }
           Compress-Archive -Path "$env:GITHUB_WORKSPACE\cov-int" -DestinationPath "$env:GITHUB_WORKSPACE\myproject.zip"
         id: compress
+
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -77,6 +92,7 @@ jobs:
           body: "Automated Coverity Scan Results"
           draft: false
           prerelease: false
+
       - name: Upload Asset to Release
         uses: actions/upload-release-asset@v1
         env:
@@ -86,6 +102,7 @@ jobs:
           asset_path: myproject.zip
           asset_name: myproject.zip
           asset_content_type: application/x-bzip2
+
       - name: Notify Coverity Scan
         run: |
           Invoke-WebRequest -Uri "https://scan.coverity.com/builds" -Method Post -Body @{
