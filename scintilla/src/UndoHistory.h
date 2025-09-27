@@ -4,7 +4,7 @@
  **/
 // Copyright 1998-2024 by Neil Hodgson <neilh@scintilla.org>
 // The License.txt file describes the conditions under which this software may be distributed.
-
+#include <cstdint>
 #ifndef UNDOHISTORY_H
 #define UNDOHISTORY_H
 
