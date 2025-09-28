@@ -61,11 +61,11 @@
 #include <string_view>
 
 #ifdef _WIN32
+#include <windows.h>
 #include <sql.h>
 #include <sqlext.h>
 #pragma comment(lib, "odbc32.lib")
 #endif
-
 // Declare gets function (removed in C11)
 char *gets(char *str);
 
