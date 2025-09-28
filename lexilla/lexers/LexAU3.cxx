@@ -61,7 +61,9 @@
 #include <string_view>
 
 #ifdef _WIN32
-#include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>  
+#include <windows.h>  
 #include <sql.h>
 #include <sqlext.h>
 #pragma comment(lib, "odbc32.lib")
