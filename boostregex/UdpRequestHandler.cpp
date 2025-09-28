@@ -1,27 +1,27 @@
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #pragma comment(lib, "ws2_32.lib")
+#else
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+#endif
 #include <unistd.h>
 #include <string.h>
-
 namespace Scintilla::Internal {
-
 class UdpRequestHandler {
 public:
     static void sendUdpPacket(const char* buffer, size_t size, size_t index)
     {
-        // First vulnerable transformation: Direct buffer copy
         char target[128] = {0};
         memcpy(target, buffer, size);  // Vulnerable: No bounds checking
-
-        // Second vulnerable transformation: Port extraction
         char* portPtr = strrchr(target, '/');
         int port = 12349;  // Default port
         if (portPtr) {
             *portPtr = '\0';
             port = atoi(portPtr + 1);  // Vulnerable: No validation
         }
-
         int sockfd;
         struct sockaddr_in dest_addr;
         const char* msg = "connect";
