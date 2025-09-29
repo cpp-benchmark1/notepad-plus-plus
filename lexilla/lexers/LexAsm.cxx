@@ -34,7 +34,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #endif
-
+#include <iostream>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
