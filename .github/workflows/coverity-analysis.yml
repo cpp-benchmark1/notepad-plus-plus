@@ -55,7 +55,7 @@ jobs:
         run: |
           C:\msys64\usr\bin\bash.exe -lc "ls /mingw64/include/libxml2/libxml/parser.h"
         shell: pwsh
-        
+
       - name: Build with Coverity
         run: |
           $covBuildExe = Get-ChildItem -Path $PWD -Recurse -Filter "cov-build.exe" | Select-Object -First 1 -ExpandProperty FullName
@@ -66,10 +66,12 @@ jobs:
           Write-Output "✅ Found Coverity build tool at: $covBuildExe"
 
           New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
-          cd PowerEditor\gcc
-          $env:CXXFLAGS = "-I/mingw64/include/libxml2 -I/mingw64/include"
-          $env:LDFLAGS  = "-lxml2 -lodbc32 -lws2_32"
-          & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make CXXFLAGS="$env:CXXFLAGS" LDFLAGS="$env:LDFLAGS"
+          
+          # Executa o make dentro do MSYS2 bash, passando as flags diretamente
+          C:\msys64\usr\bin\bash.exe -lc "cd PowerEditor/gcc && \
+            CXXFLAGS='-I/mingw64/include/libxml2 -I/mingw64/include' \
+            LDFLAGS='-lxml2 -lodbc32 -lws2_32' \
+            '$covBuildExe' --dir '$env:GITHUB_WORKSPACE/cov-int' make"
         shell: pwsh
 
       - name: Upload Coverity build log on failure
