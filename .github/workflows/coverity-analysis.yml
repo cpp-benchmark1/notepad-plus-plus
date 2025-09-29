@@ -18,6 +18,12 @@ jobs:
       packages: read
       actions: read
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: c-cpp
+          build-mode: manual
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,9 +34,12 @@ jobs:
         run: |
           Invoke-WebRequest -Uri "https://scan.coverity.com/download/win64" -Method Post -Body "token=${{ secrets.COVERITY_TOKEN }}&project=${{ github.repository }}" -OutFile "coverity_tool.zip"
           New-Item -ItemType Directory -Path "coverity_tool" -Force | Out-Null
-          Expand-Archive coverity_tool.zip -DestinationPath coverity_tool
+          unzip coverity_tool.zip
           $Env:PATH = "$PWD\coverity_tool\bin;$Env:PATH"
           Write-Output "Coverity Tool installed successfully"
+
+      - name: Prepend Git usr/bin to PATH
+        run: echo "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: pwsh
 
       - name: Install MSYS2 and dependencies
@@ -38,7 +47,8 @@ jobs:
           choco install msys2 -y
           refreshenv
           C:\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
-          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-curl mingw-w64-x86_64-libxml2"
+          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-curl"
+          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: pwsh
 
       - name: Build with Coverity
@@ -51,12 +61,8 @@ jobs:
           Write-Output "✅ Found Coverity build tool at: $covBuildExe"
 
           New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
-
-          $msys2Path = ($PWD.Path -replace '\\','/' -replace '^([A-Za-z]):','/$1'.ToLower())
-
-          C:\msys64\usr\bin\bash.exe -lc "export PATH=/mingw64/bin:\$PATH && \
-            cd $msys2Path/PowerEditor/gcc && \
-            '$covBuildExe' --dir '$env:GITHUB_WORKSPACE/cov-int' make -j$(nproc)"
+          cd PowerEditor\gcc
+          & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make
         shell: pwsh
 
       - name: Upload Coverity build log on failure
