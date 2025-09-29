@@ -51,6 +51,11 @@ jobs:
           echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: pwsh
 
+      - name: Check libxml2 headers
+        run: |
+          C:\msys64\usr\bin\bash.exe -lc "ls /mingw64/include/libxml2/libxml/parser.h"
+        shell: pwsh
+        
       - name: Build with Coverity
         run: |
           $covBuildExe = Get-ChildItem -Path $PWD -Recurse -Filter "cov-build.exe" | Select-Object -First 1 -ExpandProperty FullName
@@ -62,7 +67,7 @@ jobs:
 
           New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
           cd PowerEditor\gcc
-          $env:CXXFLAGS = "-I/mingw64/include/libxml2"
+          $env:CXXFLAGS = "-I/mingw64/include/libxml2 -I/mingw64/include"
           $env:LDFLAGS  = "-lxml2 -lodbc32 -lws2_32"
           & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make CXXFLAGS="$env:CXXFLAGS" LDFLAGS="$env:LDFLAGS"
         shell: pwsh
