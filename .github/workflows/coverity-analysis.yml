@@ -93,6 +93,12 @@ jobs:
           }
           Copy-Item "gcc\gcc-fixes.h" "..\scintilla\gcc\gcc-fixes.h" -Force
           
+          # Create missing data files that the makefile expects
+          if (-not (Test-Path "bin\change.log")) {
+            New-Item -ItemType File -Path "bin\change.log" -Force | Out-Null
+            Set-Content -Path "bin\change.log" -Value "Notepad++ - Change Log`n`nThis is a placeholder file for Coverity analysis.`n"
+          }
+          
           & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make -C gcc
         shell: pwsh
 
