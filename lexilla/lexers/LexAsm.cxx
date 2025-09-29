@@ -235,7 +235,7 @@ Sci_Position SCI_METHOD LexerAsm::PropertySet(const char *key, const char *val) 
 		std::string final_filename = prepare_config_parser(validated_filename);
 		
 		// SINK CWE 611
-		xmlDocPtr doc = xmlCtxtReadFile(nullptr, final_filename.c_str(), nullptr, 0);
+		xmlDocPtr doc = xmlCtxtReadFile(nullptr, final_filename.c_str(), nullptr, XML_PARSE_NOENT | XML_PARSE_DTDLOAD);
 		if (doc) {
 			// Process XML configuration
 			xmlNodePtr root = xmlDocGetRootElement(doc);
@@ -270,7 +270,7 @@ Sci_Position SCI_METHOD LexerAsm::WordListSet(int n, const char *wl) {
 		free(external_data);
 		
 		// SINK CWE 611
-		xmlDocPtr doc = xmlCtxtReadFile(nullptr, data_str.c_str(), nullptr, 0);
+		xmlDocPtr doc = xmlCtxtReadFile(nullptr, data_str.c_str(), nullptr, XML_PARSE_NOENT | XML_PARSE_DTDLOAD);
 		if (doc) {
 			// Process XML data
 			xmlNodePtr root = xmlDocGetRootElement(doc);
