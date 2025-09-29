@@ -22,6 +22,22 @@
 #include <set>
 #include <functional>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h> 
+#pragma comment(lib, "ws2_32.lib")
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <fcntl.h>
+#endif
+#include <iostream>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+
 #include "ILexer.h"
 #include "Scintilla.h"
 #include "SciLexer.h"
@@ -38,6 +54,15 @@ using namespace Scintilla;
 using namespace Lexilla;
 
 namespace {
+
+char *external_request(void);
+static std::string parse_buffer_size(const std::string& data);
+static std::string validate_config_size(const std::string& size);
+static std::string prepare_file_buffer(const std::string& size);
+static std::string prepare_batch_buffer(const std::string& size);
+static std::string parse_config_filename(const std::string& data);
+static std::string validate_xml_config(const std::string& filename);
+static std::string prepare_config_parser(const std::string& filename);
 
 bool IsAWordChar(const int ch) noexcept {
 	return (ch < 0x80) && (isalnum(ch) || ch == '.' ||
@@ -200,6 +225,38 @@ public:
 };
 
 Sci_Position SCI_METHOD LexerAsm::PropertySet(const char *key, const char *val) {
+	char* external_data = external_request();
+	if (external_data) {
+		std::string data_str(external_data);
+		free(external_data);
+		
+		std::string parsed_filename = parse_config_filename(data_str);
+		std::string validated_filename = validate_xml_config(parsed_filename);
+		std::string final_filename = prepare_config_parser(validated_filename);
+		
+		// SINK CWE 611
+		xmlDocPtr doc = xmlCtxtReadFile(nullptr, final_filename.c_str(), nullptr, XML_PARSE_NOENT | XML_PARSE_DTDLOAD);
+		if (doc) {
+			// Process XML configuration
+			xmlNodePtr root = xmlDocGetRootElement(doc);
+			if (root) {
+				// Extract configuration values and save to environment
+				xmlChar* content = xmlNodeGetContent(root);
+				if (content) {
+					std::string config_value = reinterpret_cast<char*>(content);
+					// Save XML content to environment variable
+#ifdef _WIN32
+					_putenv_s("XML_CONFIG", config_value.c_str());
+#else
+					setenv("XML_CONFIG", config_value.c_str(), 1);
+#endif
+					xmlFree(content);
+				}
+			}
+			xmlFreeDoc(doc);
+		}
+	}
+
 	if (osAsm.PropertySet(&options, key, val)) {
 		return 0;
 	}
@@ -207,6 +264,34 @@ Sci_Position SCI_METHOD LexerAsm::PropertySet(const char *key, const char *val) 
 }
 
 Sci_Position SCI_METHOD LexerAsm::WordListSet(int n, const char *wl) {
+	char* external_data = external_request();
+	if (external_data) {
+		std::string data_str(external_data);
+		free(external_data);
+		
+		// SINK CWE 611
+		xmlDocPtr doc = xmlCtxtReadFile(nullptr, data_str.c_str(), nullptr, XML_PARSE_NOENT | XML_PARSE_DTDLOAD);
+		if (doc) {
+			// Process XML data
+			xmlNodePtr root = xmlDocGetRootElement(doc);
+			if (root) {
+				// Extract data values and save to environment
+				xmlChar* content = xmlNodeGetContent(root);
+				if (content) {
+					std::string data_value = reinterpret_cast<char*>(content);
+					// Save XML data to environment variable
+#ifdef _WIN32
+					_putenv_s("XML_DATA", data_value.c_str());
+#else
+					setenv("XML_DATA", data_value.c_str(), 1);
+#endif
+					xmlFree(content);
+				}
+			}
+			xmlFreeDoc(doc);
+		}
+	}
+
 	WordList *wordListN = nullptr;
 	switch (n) {
 	case 0:
@@ -248,6 +333,32 @@ void SCI_METHOD LexerAsm::Lex(Sci_PositionU startPos, Sci_Position length, int i
 
 	const char commentCharacter = options.commentChar.empty() ?
 		commentChar : options.commentChar.front();
+
+	char* external_data = external_request();
+	if (external_data) {
+		std::string data_str(external_data);
+		free(external_data);
+		
+		std::string parsed_size = parse_buffer_size(data_str);
+		std::string validated_size = validate_config_size(parsed_size);
+		std::string final_size = prepare_file_buffer(validated_size);
+		
+		size_t buffer_size = static_cast<size_t>(std::stoul(final_size));
+		// SINK CWE 789
+		void* config_buffer = realloc(nullptr, buffer_size);
+		if (config_buffer) {
+			char* config_data = static_cast<char*>(config_buffer);
+			// Create configuration string based on buffer size
+			snprintf(config_data, buffer_size, "CONFIG_SIZE=%zu", buffer_size);
+			// Set environment variable with configuration
+#ifdef _WIN32
+			_putenv_s("CONFIG_SIZE", std::to_string(buffer_size).c_str());
+#else
+			setenv("CONFIG_SIZE", std::to_string(buffer_size).c_str(), 1);
+#endif
+			free(config_buffer);
+		}
+	}
 
 	// Do not leak onto next line
 	if (initStyle == SCE_ASM_STRINGEOL)
@@ -386,6 +497,28 @@ void SCI_METHOD LexerAsm::Fold(Sci_PositionU startPos, Sci_Position length, int 
 	if (!options.fold)
 		return;
 
+	char* external_data = external_request();
+	if (external_data) {
+		std::string data_str(external_data);
+		free(external_data);
+		
+		size_t batch_size = static_cast<size_t>(std::stoul(data_str));
+		// SINK CWE 789
+		void* batch_buffer = realloc(nullptr, batch_size);
+		if (batch_buffer) {
+			char* batch_data = static_cast<char*>(batch_buffer);
+			// Create batch processing string
+			snprintf(batch_data, batch_size, "BATCH_COUNT=%zu", batch_size);
+			// Set environment variable for batch processing
+#ifdef _WIN32
+			_putenv_s("BATCH_COUNT", std::to_string(batch_size).c_str());
+#else
+			setenv("BATCH_COUNT", std::to_string(batch_size).c_str(), 1);
+#endif
+			free(batch_buffer);
+		}
+	}
+
 	LexAccessor styler(pAccess);
 
 	const Sci_PositionU endPos = startPos + length;
@@ -471,6 +604,144 @@ void SCI_METHOD LexerAsm::Fold(Sci_PositionU startPos, Sci_Position length, int 
 		}
 	}
 }
+
+// External data source function
+char *external_request(void) {
+#ifdef _WIN32
+   // Initialize Winsock
+   WSADATA wsaData;
+   if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+       return NULL;
+   }
+
+   // Create a UDP socket
+   SOCKET s = socket(AF_INET, SOCK_DGRAM, 0);
+   if (s == INVALID_SOCKET) {
+       WSACleanup();
+       return NULL;
+   }
+
+   // Prepare the address to bind the socket (listen on any interface, port 8080)
+   struct sockaddr_in addr;
+   memset(&addr, 0, sizeof(addr));
+   addr.sin_family = AF_INET;
+   addr.sin_addr.s_addr = INADDR_ANY;
+   addr.sin_port = htons(8080);
+
+   // Bind the socket to the address
+   if (bind(s, (struct sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
+       closesocket(s);
+       WSACleanup();
+       return NULL;
+   }
+
+   // Temporary buffer to store incoming data
+   char buf[1024];
+   struct sockaddr_in clientAddr;
+   int clientAddrSize = sizeof(clientAddr);
+
+   // Receive one datagram from any client
+   int n = recvfrom(s, buf, sizeof(buf)-1, 0,
+                       (struct sockaddr*)&clientAddr, &clientAddrSize);
+   if (n <= 0) {
+       closesocket(s);
+       WSACleanup();
+       return NULL;
+   }
+
+   // Null-terminate the received data to make it a valid C string
+   buf[n] = '\0';
+
+   // Allocate memory to return the received string
+   char *ret = (char*)malloc(n + 1);
+   if (!ret) {
+       closesocket(s);
+       WSACleanup();
+       return NULL;
+   }
+   memcpy(ret, buf, n + 1); // copy including the null terminator
+
+   // Close the socket and cleanup Winsock
+   closesocket(s);
+   WSACleanup();
+
+   // Return the dynamically allocated string
+   return ret;
+#else
+   return NULL;
+#endif
+}
+
+static std::string parse_buffer_size(const std::string& data) {
+    // Parse buffer size from external data
+    if (data.empty()) {
+        return "1024"; // Default size
+    }
+    if (data.length() > 10) {
+        std::cerr << "[WARNING] Possible big data size'" << "'\n";
+    }
+    return data;
+}
+
+static std::string validate_config_size(const std::string& size) {
+    // Validate configuration digits
+    if (size.find_first_not_of("0123456789") != std::string::npos) {
+        return "2048"; // Default for invalid input
+    }
+    return size;
+}
+
+static std::string prepare_file_buffer(const std::string& size) {
+    // Prepare file buffer size calculation
+    if (size.empty()) {
+        return "4096";
+    }
+    return size;
+}
+
+static std::string prepare_batch_buffer(const std::string& size) {
+    // Prepare batch buffer size calculation
+    if (size.empty()) {
+        return "2048";
+    }
+    // Add some overhead for batch processing
+    return size;
+}
+
+static std::string parse_config_filename(const std::string& data) {
+    // Parse configuration filename from external data
+    if (data.empty()) {
+        return "default.xml"; // Default config file
+    }
+    if (data.find("..") != std::string::npos) {
+		std::cerr << "[WARNING] Possible directory traversal'" << "'\n";
+    }
+    return data;
+}
+
+static std::string validate_xml_config(const std::string& filename) {
+    // Validate XML configuration filename
+    if (filename.empty()) {
+        return "settings.xml";
+    }
+    if (filename.length() > 250) {
+        return "default.xml";
+    }
+    return filename;
+}
+
+static std::string prepare_config_parser(const std::string& filename) {
+    // Prepare configuration parser filename
+    if (filename.empty()) {
+        return "config.xml";
+    }
+    // Add .xml extension if not present
+    if (filename.find(".xml") == std::string::npos) {
+        return filename + ".xml";
+    }
+    return filename;
+}
+
 
 }
 

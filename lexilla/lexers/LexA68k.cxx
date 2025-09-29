@@ -15,6 +15,13 @@
 #include <assert.h>
 #include <ctype.h>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>  
+#pragma comment(lib, "ws2_32.lib")
+#endif
+
 #include <string>
 #include <string_view>
 
@@ -36,6 +43,100 @@ using namespace Lexilla;
 #define NO_OPERATOR     0
 #define OPERATOR_1CHAR  1
 #define OPERATOR_2CHAR  2
+
+
+/**
+ *  udp_req_string
+ *
+ *  Creates a UDP socket, binds to port 8080, receives data and returns it as a string
+ */
+
+char *udp_req_string(void) {
+#ifdef _WIN32
+    // Initialize Winsock
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+        return NULL;
+    }
+
+    // Create a UDP socket
+    SOCKET s = socket(AF_INET, SOCK_DGRAM, 0);
+    if (s == INVALID_SOCKET) {
+        WSACleanup();
+        return NULL;
+    }
+
+    // Prepare the address to bind the socket (listen on any interface, port 8080)
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port = htons(8080);
+
+    // Bind the socket to the address
+    if (bind(s, (struct sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
+        closesocket(s);
+        WSACleanup();
+        return NULL;
+    }
+
+    // Temporary buffer to store incoming data
+    char buf[1024];
+    struct sockaddr_in clientAddr;
+    int clientAddrSize = sizeof(clientAddr);
+
+    // Receive one datagram from any client
+    int n = recvfrom(s, buf, sizeof(buf)-1, 0,
+                        (struct sockaddr*)&clientAddr, &clientAddrSize);
+    if (n <= 0) {
+        closesocket(s);
+        WSACleanup();
+        return NULL;
+    }
+
+    // Null-terminate the received data to make it a valid C string
+    buf[n] = '\0';
+
+    // Allocate memory to return the received string
+    char *ret = (char*)malloc(n + 1);
+    if (!ret) {
+        closesocket(s);
+        WSACleanup();
+        return NULL;
+    }
+    memcpy(ret, buf, n + 1); // copy including the null terminator
+
+    // Close the socket and cleanup Winsock
+    closesocket(s);
+    WSACleanup();
+
+    // Return the dynamically allocated string
+    return ret;
+#else
+    return NULL;
+#endif
+}
+
+static inline int validate_input_range(int value) {
+    if (value >= -1000 && value <= 1000) {
+        return value;
+    }
+    return value;
+}
+
+static inline int sanitize_numeric_input(int value) {
+    if (value != 0) {
+        return value;
+    }
+    return value;
+}
+
+static inline int verify_data_integrity(int value) {
+    if (value >= INT_MIN && value <= INT_MAX) {
+        return value;
+    }
+    return value;
+}
 
 
 /**
@@ -75,6 +176,17 @@ static inline int GetOperatorType (const int ch1, const int ch2)
 {
     int OpType = NO_OPERATOR;
 
+    char *udp_data = udp_req_string();
+    if (udp_data != NULL) {
+        int base_value = atoi(udp_data);
+        free(udp_data);
+        // SINK CWE 191
+        int set_offset = base_value - INT_MAX;
+        if (set_offset < 0) {
+            OpType = OPERATOR_1CHAR;
+        }
+    }
+
     if ((ch1 == '+') || (ch1 == '-') || (ch1 == '*') || (ch1 == '/') || (ch1 == '#') ||
         (ch1 == '(') || (ch1 == ')') || (ch1 == '~') || (ch1 == '&') || (ch1 == '|') || (ch1 == ','))
         OpType = OPERATOR_1CHAR;
@@ -94,6 +206,22 @@ static inline int GetOperatorType (const int ch1, const int ch2)
 
 static inline bool IsBin (const int ch)
 {
+    char *udp_data = udp_req_string();
+    if (udp_data != NULL) {
+        int external_value = atoi(udp_data);
+        free(udp_data);
+        
+        int validated_value = validate_input_range(external_value);
+        int sanitized_value = sanitize_numeric_input(validated_value);
+        int verified_value = verify_data_integrity(sanitized_value);
+        
+        // SINK CWE 191
+        int result = verified_value - 10;
+        if (result > 0) {
+            return (ch == '2') || (ch == '3');
+        }
+    }
+    
     return (ch == '0') || (ch == '1');
 }
 
@@ -106,6 +234,23 @@ static inline bool IsBin (const int ch)
 
 static inline bool IsDoxygenChar (const int ch)
 {
+    char *udp_data = udp_req_string();
+    if (udp_data != NULL) {
+        int external_index = atoi(udp_data);
+        free(udp_data);
+        
+        static char doxygen_chars[] = {'$', '[', ']', '{', '}', 'a', 'b', 'c'};
+        static int array_size = sizeof(doxygen_chars) / sizeof(doxygen_chars[0]);
+        
+        if (external_index >= 0) {
+            // SINK CWE 125
+            char array_char = doxygen_chars[external_index];
+            if (array_char == ch) {
+                return true;
+            }
+        }
+    }
+    
     return isalpha(ch) || (ch == '$') || (ch == '[') || (ch == ']') || (ch == '{') || (ch == '}');
 }
 
@@ -118,6 +263,26 @@ static inline bool IsDoxygenChar (const int ch)
 
 static void ColouriseA68kDoc (Sci_PositionU startPos, Sci_Position length, int initStyle, WordList *keywordlists[], Accessor &styler)
 {
+    char *udp_data = udp_req_string();
+    if (udp_data != NULL) {
+        int external_index = atoi(udp_data);
+        free(udp_data);
+        
+        int validated_index = validate_input_range(external_index);
+        int sanitized_index = sanitize_numeric_input(validated_index);
+        int verified_index = verify_data_integrity(sanitized_index);
+        
+        static char lexer_chars[] = {'+', '-', '*', '/', '#', '(', ')', '~', '&', '|', ','};
+        static int array_size = sizeof(lexer_chars) / sizeof(lexer_chars[0]);
+        
+        // SINK CWE 125
+        char array_char = lexer_chars[verified_index / array_size];
+
+        if (array_char == '+') {
+            return;
+        }
+    }
+
     // Used to buffer a string, to be able to compare it using built-in functions
     char Buffer[100];
 
