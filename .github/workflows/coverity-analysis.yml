@@ -62,8 +62,8 @@ jobs:
 
           New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
           cd PowerEditor\gcc
-          $env"CXXFLAGS"="-I/mingw64/include/libxml2"
-          $env"LDFLAGS"="-lxml2 -lodbc32 -lws2_32"
+          $env:CXXFLAGS = "-I/mingw64/include/libxml2"
+          $env:LDFLAGS  = "-lxml2 -lodbc32 -lws2_32"
           & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make CXXFLAGS="$env:CXXFLAGS" LDFLAGS="$env:LDFLAGS"
         shell: pwsh
 
