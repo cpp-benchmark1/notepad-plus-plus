@@ -362,8 +362,8 @@ static bool IsValidIdentifier(const std::string& identifier) {
 	
 	int safe_values[] = {loop_iterations, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512};
 	
-	// SINK CWE 190
 	int iterations_multiplier = safe_values[0];
+	// SINK CWE 190
 	length = length * iterations_multiplier;
 	
 	// Using safe value from array
