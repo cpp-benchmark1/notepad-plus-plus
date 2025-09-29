@@ -76,8 +76,17 @@ jobs:
           $env:CFLAGS = "-IC:\msys64\mingw64\include\libxml2"
           $env:CXXFLAGS = "-IC:\msys64\mingw64\include\libxml2"
           
-          # Build from the correct directory - PowerEditor (makefile expects to be run from here)
+          # Create a symbolic link to fix the gcc-fixes.h path issue
           cd PowerEditor
+          if (-not (Test-Path "gcc\gcc-fixes.h")) {
+            Copy-Item "gcc\gcc-fixes.h" "gcc\gcc-fixes.h.backup" -ErrorAction SilentlyContinue
+          }
+          # Create a copy in the expected location for the makefile
+          if (-not (Test-Path "gcc\gcc\gcc-fixes.h")) {
+            New-Item -ItemType Directory -Path "gcc\gcc" -Force | Out-Null
+            Copy-Item "gcc\gcc-fixes.h" "gcc\gcc\gcc-fixes.h"
+          }
+          
           & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make -C gcc
         shell: pwsh
 
