@@ -67,8 +67,8 @@ jobs:
 
           New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
           
-          # Executa o make dentro do MSYS2 bash, passando as flags diretamente
-          C:\msys64\usr\bin\bash.exe -lc "cd PowerEditor/gcc && \
+          $msys2Path = "/${PWD.Path -replace ':','' -replace '\\','/'}"
+          C:\msys64\usr\bin\bash.exe -lc "cd $msys2Path/PowerEditor/gcc && \
             CXXFLAGS='-I/mingw64/include/libxml2 -I/mingw64/include' \
             LDFLAGS='-lxml2 -lodbc32 -lws2_32' \
             '$covBuildExe' --dir '$env:GITHUB_WORKSPACE/cov-int' make"
