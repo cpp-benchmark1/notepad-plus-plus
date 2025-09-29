@@ -76,9 +76,9 @@ jobs:
           $env:CFLAGS = "-IC:\msys64\mingw64\include\libxml2"
           $env:CXXFLAGS = "-IC:\msys64\mingw64\include\libxml2"
           
-          # Build from the correct directory - PowerEditor/gcc
-          cd PowerEditor\gcc
-          & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make
+          # Build from the correct directory - PowerEditor (makefile expects to be run from here)
+          cd PowerEditor
+          & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make -C gcc
         shell: pwsh
 
       - name: Upload Coverity build log on failure
