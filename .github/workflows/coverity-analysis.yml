@@ -76,16 +76,22 @@ jobs:
           $env:CFLAGS = "-IC:\msys64\mingw64\include\libxml2"
           $env:CXXFLAGS = "-IC:\msys64\mingw64\include\libxml2"
           
-          # Create a symbolic link to fix the gcc-fixes.h path issue
+          # Fix the gcc-fixes.h path issue by creating the expected directory structure
           cd PowerEditor
-          if (-not (Test-Path "gcc\gcc-fixes.h")) {
-            Copy-Item "gcc\gcc-fixes.h" "gcc\gcc-fixes.h.backup" -ErrorAction SilentlyContinue
-          }
-          # Create a copy in the expected location for the makefile
-          if (-not (Test-Path "gcc\gcc\gcc-fixes.h")) {
+          
+          # Create the directory structure that the makefile expects
+          if (-not (Test-Path "gcc\gcc")) {
             New-Item -ItemType Directory -Path "gcc\gcc" -Force | Out-Null
-            Copy-Item "gcc\gcc-fixes.h" "gcc\gcc\gcc-fixes.h"
           }
+          
+          # Copy gcc-fixes.h to the location where the sub-makefile expects it
+          Copy-Item "gcc\gcc-fixes.h" "gcc\gcc\gcc-fixes.h" -Force
+          
+          # Also create a copy in the scintilla directory structure
+          if (-not (Test-Path "..\scintilla\gcc")) {
+            New-Item -ItemType Directory -Path "..\scintilla\gcc" -Force | Out-Null
+          }
+          Copy-Item "gcc\gcc-fixes.h" "..\scintilla\gcc\gcc-fixes.h" -Force
           
           & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make -C gcc
         shell: pwsh
