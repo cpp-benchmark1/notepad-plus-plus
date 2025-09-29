@@ -71,12 +71,13 @@ jobs:
           Write-Output "✅ Found Coverity build tool at: $covBuildExe"
 
           New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
-          cd PowerEditor\gcc
           
           # Set additional compiler flags for libxml2
           $env:CFLAGS = "-IC:\msys64\mingw64\include\libxml2"
           $env:CXXFLAGS = "-IC:\msys64\mingw64\include\libxml2"
           
+          # Build from the correct directory - PowerEditor/gcc
+          cd PowerEditor\gcc
           & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make
         shell: pwsh
 
