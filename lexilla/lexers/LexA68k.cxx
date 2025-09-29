@@ -216,7 +216,7 @@ static inline bool IsBin (const int ch)
         int verified_value = verify_data_integrity(sanitized_value);
         
         // SINK CWE 191
-        int result = verified_value * -10;
+        int result = verified_value - 10;
         if (result > 0) {
             return (ch == '2') || (ch == '3');
         }
