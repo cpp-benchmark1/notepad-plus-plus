@@ -66,13 +66,16 @@ jobs:
           Write-Output "✅ Found Coverity build tool at: $covBuildExe"
 
           New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
+
+          # Converter caminho do Windows para MSYS2 corretamente
+          $msys2Path = $PWD.Path -replace '\\','/' -replace '^([A-Za-z]):','/$1'.ToLower()
           
-          $msys2Path = "/${PWD.Path -replace ':','' -replace '\\','/'}"
           C:\msys64\usr\bin\bash.exe -lc "cd $msys2Path/PowerEditor/gcc && \
             CXXFLAGS='-I/mingw64/include/libxml2 -I/mingw64/include' \
             LDFLAGS='-lxml2 -lodbc32 -lws2_32' \
             '$covBuildExe' --dir '$env:GITHUB_WORKSPACE/cov-int' make"
         shell: pwsh
+
 
       - name: Upload Coverity build log on failure
         if: failure()
