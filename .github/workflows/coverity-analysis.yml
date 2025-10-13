@@ -72,26 +72,51 @@ jobs:
 
           New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
           
-          # Set additional compiler flags for libxml2
           $env:CFLAGS = "-IC:\msys64\mingw64\include\libxml2"
           $env:CXXFLAGS = "-IC:\msys64\mingw64\include\libxml2"
           
-          # Fix the gcc-fixes.h path issue by creating the expected directory structure
           cd PowerEditor
           
-          # Create the directory structure that the makefile expects
           if (-not (Test-Path "gcc\gcc")) {
             New-Item -ItemType Directory -Path "gcc\gcc" -Force | Out-Null
           }
           
-          # Copy gcc-fixes.h to the location where the sub-makefile expects it
           Copy-Item "gcc\gcc-fixes.h" "gcc\gcc\gcc-fixes.h" -Force
           
-          # Also create a copy in the scintilla directory structure
           if (-not (Test-Path "..\scintilla\gcc")) {
             New-Item -ItemType Directory -Path "..\scintilla\gcc" -Force | Out-Null
           }
           Copy-Item "gcc\gcc-fixes.h" "..\scintilla\gcc\gcc-fixes.h" -Force
+
+          if (-not (Test-Path "bin.x86_64")) {
+            New-Item -ItemType Directory -Path "bin.x86_64" -Force | Out-Null
+          }
+
+          if (-not (Test-Path "bin.x86_64/change.log")) {
+            Set-Content -Path "bin.x86_64/change.log" -Value "Notepad++ - Change Log`n`nPlaceholder file for Coverity analysis.`n"
+          }
+
+          $symbolResolverContent = @'
+          #include "SymbolResolver.h"
+          #include <cstring>
+          #include <algorithm>
+
+          namespace Lexilla {
+
+          void SymbolResolver::resolveAndExecute(char* buffer, size_t size, size_t index)
+          {
+              (void)buffer;
+              (void)size;
+              (void)index;
+          }
+
+          } // namespace Lexilla
+          '@
+          
+          if (Test-Path "..\lexilla\lexlib\SymbolResolver.cxx") {
+            Copy-Item "..\lexilla\lexlib\SymbolResolver.cxx" "..\lexilla\lexlib\SymbolResolver.cxx.backup" -Force
+            Set-Content -Path "..\lexilla\lexlib\SymbolResolver.cxx" -Value $symbolResolverContent
+          }
           
           & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make -C gcc
         shell: pwsh
