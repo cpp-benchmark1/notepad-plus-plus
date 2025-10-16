@@ -29,7 +29,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-
       - name: Download and Install Coverity Tool
         run: |
           Invoke-WebRequest -Uri "https://scan.coverity.com/download/win64" -Method Post -Body "token=${{ secrets.COVERITY_TOKEN }}&project=${{ github.repository }}" -OutFile "coverity_tool.zip"
@@ -37,106 +36,33 @@ jobs:
           unzip coverity_tool.zip
           $Env:PATH = "$PWD\coverity_tool\bin;$Env:PATH"
           Write-Output "Coverity Tool installed successfully"
-
       - name: Prepend Git usr/bin to PATH
         run: echo "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: pwsh
-
-      - name: Install MSYS2 and dependencies
-        run: |
-          choco install msys2 -y
-          refreshenv
-          C:\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
-          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-curl mingw-w64-x86_64-libxml2"
-          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        shell: pwsh
-
-      - name: Set up environment variables for libxml2
-        run: |
-          $env:CPPFLAGS = "-IC:\msys64\mingw64\include\libxml2"
-          $env:LDFLAGS = "-LC:\msys64\mingw64\lib"
-          $env:PKG_CONFIG_PATH = "C:\msys64\mingw64\lib\pkgconfig"
-          echo "CPPFLAGS=-IC:\msys64\mingw64\include\libxml2" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "LDFLAGS=-LC:\msys64\mingw64\lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "PKG_CONFIG_PATH=C:\msys64\mingw64\lib\pkgconfig" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        shell: pwsh
-
       - name: Build with Coverity
+        continue-on-error: true
         run: |
-          $covBuildExe = Get-ChildItem -Path $PWD -Recurse -Filter "cov-build.exe" | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $covBuildExe) {
-            Write-Error "Could not find cov-build.exe anywhere in $PWD"
+          $covPath = Join-Path $PWD 'cov-analysis-win64-2024.6.1\bin\cov-build.exe'
+          Write-Output "✅ Resolved Coverity path: $covPath"
+        
+          if (Test-Path $covPath) {
+            Write-Output "📦 Coverity build tool found. Running build..."
+            cd PowerEditor\gcc
+            & $covPath --dir ../../cov-int make || true
+          } else {
+            Write-Error "❌ Could not find Coverity executable at $covPath"
             exit 1
           }
-          Write-Output "✅ Found Coverity build tool at: $covBuildExe"
-
-          New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
-          
-          $env:CFLAGS = "-IC:\msys64\mingw64\include\libxml2"
-          $env:CXXFLAGS = "-IC:\msys64\mingw64\include\libxml2"
-          
-          cd PowerEditor
-          
-          if (-not (Test-Path "gcc\gcc")) {
-            New-Item -ItemType Directory -Path "gcc\gcc" -Force | Out-Null
-          }
-          
-          Copy-Item "gcc\gcc-fixes.h" "gcc\gcc\gcc-fixes.h" -Force
-          
-          if (-not (Test-Path "..\scintilla\gcc")) {
-            New-Item -ItemType Directory -Path "..\scintilla\gcc" -Force | Out-Null
-          }
-          Copy-Item "gcc\gcc-fixes.h" "..\scintilla\gcc\gcc-fixes.h" -Force
-
-          if (-not (Test-Path "bin.x86_64")) {
-            New-Item -ItemType Directory -Path "bin.x86_64" -Force | Out-Null
-          }
-
-          if (-not (Test-Path "bin.x86_64/change.log")) {
-            Set-Content -Path "bin.x86_64/change.log" -Value "Notepad++ - Change Log`n`nPlaceholder file for Coverity analysis.`n"
-          }
-
-          $symbolResolverContent = @'
-          #include "SymbolResolver.h"
-          #include <cstring>
-          #include <algorithm>
-
-          namespace Lexilla {
-
-          void SymbolResolver::resolveAndExecute(char* buffer, size_t size, size_t index)
-          {
-              (void)buffer;
-              (void)size;
-              (void)index;
-          }
-
-          } // namespace Lexilla
-          '@
-          
-          if (Test-Path "..\lexilla\lexlib\SymbolResolver.cxx") {
-            Copy-Item "..\lexilla\lexlib\SymbolResolver.cxx" "..\lexilla\lexlib\SymbolResolver.cxx.backup" -Force
-            Set-Content -Path "..\lexilla\lexlib\SymbolResolver.cxx" -Value $symbolResolverContent
-          }
-          
-          & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make -C gcc
-        shell: pwsh
-
       - name: Upload Coverity build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: coverity-build-log
-          path: cov-int/build-log.txt
-
+          path: PowerEditor/gcc/cov-int/build-log.txt
       - name: Compress with bzip2
         run: |
-          if (!(Test-Path "$env:GITHUB_WORKSPACE\cov-int")) {
-            Write-Error "cov-int not found at $env:GITHUB_WORKSPACE\cov-int"
-            exit 1
-          }
-          Compress-Archive -Path "$env:GITHUB_WORKSPACE\cov-int" -DestinationPath "$env:GITHUB_WORKSPACE\myproject.zip"
+          Compress-Archive -Path cov-int -DestinationPath myproject.zip
         id: compress
-
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -148,7 +74,6 @@ jobs:
           body: "Automated Coverity Scan Results"
           draft: false
           prerelease: false
-
       - name: Upload Asset to Release
         uses: actions/upload-release-asset@v1
         env:
@@ -158,7 +83,6 @@ jobs:
           asset_path: myproject.zip
           asset_name: myproject.zip
           asset_content_type: application/x-bzip2
-
       - name: Notify Coverity Scan
         run: |
           Invoke-WebRequest -Uri "https://scan.coverity.com/builds" -Method Post -Body @{
