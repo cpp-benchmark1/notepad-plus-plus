@@ -34,6 +34,9 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
+    
+    - name: Show runner OS
+      run: echo "Running on ${{ runner.os }}"
     - name: Install dependencies (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -45,9 +48,10 @@ jobs:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
     - name: Build project (Linux)
-      if: runner.os == 'Linux' && matrix.build-mode == 'manual'
+      if: runner.os == 'Linux'
       run: |
-        find . -name "*.cpp" -exec g++ {} -o {}.out -lcurl -lssl -lmongoc-1.0 \;
+        mkdir -p build
+        g++ $(find . -name "*.cpp") -o build/output -lcurl -lssl -lmongoc-1.0
     - name: Build project (Windows)
       if: runner.os == 'Windows' && matrix.build-mode == 'manual'
       shell: powershell
