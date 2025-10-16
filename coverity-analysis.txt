@@ -10,6 +10,7 @@ on:
         description: "Languages to analyze"
         required: true
         default: "c-cpp"
+
 jobs:
   coverity:
     runs-on: windows-latest
@@ -36,7 +37,7 @@ jobs:
           New-Item -ItemType Directory -Path "coverity_tool" -Force | Out-Null
           unzip coverity_tool.zip
           $Env:PATH = "$PWD\coverity_tool\bin;$Env:PATH"
-          Write-Output "Coverity Tool installed successfully"
+        shell: pwsh
 
       - name: Prepend Git usr/bin to PATH
         run: echo "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
@@ -51,11 +52,8 @@ jobs:
           echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: pwsh
 
-      - name: Set up environment variables for libxml2
+      - name: Set up environment variables
         run: |
-          $env:CPPFLAGS = "-IC:\msys64\mingw64\include\libxml2"
-          $env:LDFLAGS = "-LC:\msys64\mingw64\lib"
-          $env:PKG_CONFIG_PATH = "C:\msys64\mingw64\lib\pkgconfig"
           echo "CPPFLAGS=-IC:\msys64\mingw64\include\libxml2" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           echo "LDFLAGS=-LC:\msys64\mingw64\lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           echo "PKG_CONFIG_PATH=C:\msys64\mingw64\lib\pkgconfig" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -64,35 +62,15 @@ jobs:
       - name: Build with Coverity
         run: |
           $covBuildExe = Get-ChildItem -Path $PWD -Recurse -Filter "cov-build.exe" | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $covBuildExe) {
-            Write-Error "Could not find cov-build.exe anywhere in $PWD"
-            exit 1
-          }
-          Write-Output "✅ Found Coverity build tool at: $covBuildExe"
-
+          if (-not $covBuildExe) { exit 1 }
           New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
-          
-          # Set additional compiler flags for libxml2
           $env:CFLAGS = "-IC:\msys64\mingw64\include\libxml2"
           $env:CXXFLAGS = "-IC:\msys64\mingw64\include\libxml2"
-          
-          # Fix the gcc-fixes.h path issue by creating the expected directory structure
           cd PowerEditor
-          
-          # Create the directory structure that the makefile expects
-          if (-not (Test-Path "gcc\gcc")) {
-            New-Item -ItemType Directory -Path "gcc\gcc" -Force | Out-Null
-          }
-          
-          # Copy gcc-fixes.h to the location where the sub-makefile expects it
+          if (-not (Test-Path "gcc\gcc")) { New-Item -ItemType Directory -Path "gcc\gcc" -Force | Out-Null }
           Copy-Item "gcc\gcc-fixes.h" "gcc\gcc\gcc-fixes.h" -Force
-          
-          # Also create a copy in the scintilla directory structure
-          if (-not (Test-Path "..\scintilla\gcc")) {
-            New-Item -ItemType Directory -Path "..\scintilla\gcc" -Force | Out-Null
-          }
+          if (-not (Test-Path "..\scintilla\gcc")) { New-Item -ItemType Directory -Path "..\scintilla\gcc" -Force | Out-Null }
           Copy-Item "gcc\gcc-fixes.h" "..\scintilla\gcc\gcc-fixes.h" -Force
-          
           & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make -C gcc
         shell: pwsh
 
@@ -103,14 +81,12 @@ jobs:
           name: coverity-build-log
           path: cov-int/build-log.txt
 
-      - name: Compress with bzip2
+      - name: Compress Coverity Output
         run: |
-          if (!(Test-Path "$env:GITHUB_WORKSPACE\cov-int")) {
-            Write-Error "cov-int not found at $env:GITHUB_WORKSPACE\cov-int"
-            exit 1
-          }
-          Compress-Archive -Path "$env:GITHUB_WORKSPACE\cov-int" -DestinationPath "$env:GITHUB_WORKSPACE\myproject.zip"
-        id: compress
+          $covDir = Join-Path $env:GITHUB_WORKSPACE "cov-int"
+          $zipPath = Join-Path $env:GITHUB_WORKSPACE "myproject.zip"
+          if (Test-Path $covDir) { Compress-Archive -Path $covDir -DestinationPath $zipPath -Force }
+        shell: pwsh
 
       - name: Create GitHub Release
         id: create_release
