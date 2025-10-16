@@ -10,7 +10,6 @@ on:
         description: "Languages to analyze"
         required: true
         default: "c-cpp"
-
 jobs:
   coverity:
     runs-on: windows-latest
@@ -19,59 +18,52 @@ jobs:
       packages: read
       actions: read
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: c-cpp
+          build-mode: manual
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-
       - name: Download and Install Coverity Tool
         run: |
-          Invoke-WebRequest -Uri "https://scan.coverity.com/download/win64" `
-            -Method Post -Body "token=${{ secrets.COVERITY_TOKEN }}&project=${{ github.repository }}" `
-            -OutFile "coverity_tool.zip"
-          Expand-Archive -Path coverity_tool.zip -DestinationPath coverity_tool
+          Invoke-WebRequest -Uri "https://scan.coverity.com/download/win64" -Method Post -Body "token=${{ secrets.COVERITY_TOKEN }}&project=${{ github.repository }}" -OutFile "coverity_tool.zip"
+          New-Item -ItemType Directory -Path "coverity_tool" -Force | Out-Null
+          unzip coverity_tool.zip
           $Env:PATH = "$PWD\coverity_tool\bin;$Env:PATH"
           Write-Output "Coverity Tool installed successfully"
-        shell: pwsh
-
       - name: Prepend Git usr/bin to PATH
         run: echo "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: pwsh
-
       - name: Build with Coverity
+        continue-on-error: true
         run: |
-          $covPath = Join-Path $PWD 'coverity_tool\bin\cov-build.exe'
+          $covPath = Join-Path $PWD 'cov-analysis-win64-2024.6.1\bin\cov-build.exe'
+          Write-Output "✅ Resolved Coverity path: $covPath"
+        
           if (Test-Path $covPath) {
-            Write-Output "✅ Coverity build tool found at $covPath"
-            
-            # Cria diretório cov-int se não existir
-            $covDir = Join-Path $PWD "cov-int"
-            if (-not (Test-Path $covDir)) {
-              New-Item -ItemType Directory -Path $covDir | Out-Null
-            }
-
+            Write-Output "📦 Coverity build tool found. Running build..."
             cd PowerEditor\gcc
-            & $covPath --dir ../../cov-int make
-            cd ../../
+            & $covPath --dir ../../cov-int make || true
           } else {
-            Write-Warning "❌ Could not find Coverity executable at $covPath. Skipping build."
+            Write-Error "❌ Could not find Coverity executable at $covPath"
+            exit 1
           }
-        shell: pwsh
-
-      - name: Compress Coverity Output
+      - name: Upload Coverity build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverity-build-log
+          path: PowerEditor/gcc/cov-int/build-log.txt
+      - name: Compress with bzip2
         run: |
-          $covDir = Join-Path $PWD "cov-int"
-          if (Test-Path $covDir) {
-            Compress-Archive -Path $covDir -DestinationPath myproject.zip -Force
-            Write-Output "✅ Coverity output compressed to myproject.zip"
-          } else {
-            Write-Warning "⚠️ Directory cov-int does not exist. Skipping compression."
-          }
-        shell: pwsh
-
+          Compress-Archive -Path cov-int -DestinationPath myproject.zip
+        id: compress
       - name: Create GitHub Release
-        if: exists('myproject.zip')
         id: create_release
         uses: actions/create-release@v1
         env:
@@ -82,9 +74,7 @@ jobs:
           body: "Automated Coverity Scan Results"
           draft: false
           prerelease: false
-
       - name: Upload Asset to Release
-        if: exists('myproject.zip')
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -93,3 +83,13 @@ jobs:
           asset_path: myproject.zip
           asset_name: myproject.zip
           asset_content_type: application/x-bzip2
+      - name: Notify Coverity Scan
+        run: |
+          Invoke-WebRequest -Uri "https://scan.coverity.com/builds" -Method Post -Body @{
+            project     = "${{ github.repository }}"
+            token       = "${{ secrets.COVERITY_TOKEN }}"
+            email       = "cpp.benchmark@proton.me"
+            url         = "https://github.com/${{ github.repository }}/releases/download/coverity-scan-${{ github.run_id }}/myproject.zip"
+            version     = "1.0"
+            description = "Automated Coverity Scan"
+          }
