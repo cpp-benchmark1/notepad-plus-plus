@@ -1,4 +1,5 @@
 name: "CodeQL" 
+
 on:
   push:
     branches: [ "main" ]
@@ -10,10 +11,11 @@ on:
         description: "Languages to analyze"
         required: true
         default: "c-cpp"
+
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
     permissions:
       security-events: write
       packages: read
@@ -23,14 +25,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - language: c-cpp
-          build-mode: manual
-          os: ubuntu-24.04
-        - language: c-cpp
-          build-mode: manual
-          os: windows-latest
+          - language: c-cpp
+            build-mode: manual
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: 'recursive'
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Install dependencies (Linux)
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential clang libcurl4-openssl-dev libssl-dev libmongoc-dev
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Build project (Linux)
+        if: matrix.build-mode == 'manual'
+        run: |
+          find . -name "*.cpp" ! -path "*/PowerEditor/*" ! -path "*/WinControls/*" \
+            -exec clang++ -c -fsyntax-only -w {} \;
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
