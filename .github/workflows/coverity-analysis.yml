@@ -10,6 +10,7 @@ on:
         description: "Languages to analyze"
         required: true
         default: "c-cpp"
+
 jobs:
   coverity:
     runs-on: windows-latest
@@ -18,17 +19,12 @@ jobs:
       packages: read
       actions: read
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - language: c-cpp
-          build-mode: manual
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+
       - name: Download and Install Coverity Tool
         run: |
           Invoke-WebRequest -Uri "https://scan.coverity.com/download/win64" -Method Post -Body "token=${{ secrets.COVERITY_TOKEN }}&project=${{ github.repository }}" -OutFile "coverity_tool.zip"
@@ -36,33 +32,43 @@ jobs:
           unzip coverity_tool.zip
           $Env:PATH = "$PWD\coverity_tool\bin;$Env:PATH"
           Write-Output "Coverity Tool installed successfully"
+
       - name: Prepend Git usr/bin to PATH
         run: echo "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: pwsh
+
       - name: Build with Coverity
         continue-on-error: true
         run: |
           $covPath = Join-Path $PWD 'cov-analysis-win64-2024.6.1\bin\cov-build.exe'
           Write-Output "✅ Resolved Coverity path: $covPath"
-        
-          if (Test-Path $covPath) {
-            Write-Output "📦 Coverity build tool found. Running build..."
-            cd PowerEditor\gcc
-            & $covPath --dir ../../cov-int make || true
-          } else {
+
+          if (-not (Test-Path $covPath)) {
             Write-Error "❌ Could not find Coverity executable at $covPath"
             exit 1
           }
+
+          New-Item -ItemType Directory -Path PowerEditor\cov-int -Force | Out-Null
+
+          cd PowerEditor\gcc
+          & $covPath --dir ../cov-int make || true
+          cd ../../
+
       - name: Upload Coverity build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: coverity-build-log
-          path: PowerEditor/gcc/cov-int/build-log.txt
-      - name: Compress with bzip2
+          path: PowerEditor\cov-int/build-log.txt
+
+      - name: Compress Coverity output
         run: |
-          Compress-Archive -Path cov-int -DestinationPath myproject.zip
-        id: compress
+          if (Test-Path "PowerEditor\cov-int") {
+            Compress-Archive -Path PowerEditor\cov-int -DestinationPath myproject.zip
+          } else {
+            Write-Warning "Directory PowerEditor\cov-int not found. Skipping compression."
+          }
+
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -74,6 +80,7 @@ jobs:
           body: "Automated Coverity Scan Results"
           draft: false
           prerelease: false
+
       - name: Upload Asset to Release
         uses: actions/upload-release-asset@v1
         env:
@@ -83,6 +90,7 @@ jobs:
           asset_path: myproject.zip
           asset_name: myproject.zip
           asset_content_type: application/x-bzip2
+
       - name: Notify Coverity Scan
         run: |
           Invoke-WebRequest -Uri "https://scan.coverity.com/builds" -Method Post -Body @{
