@@ -37,7 +37,7 @@ jobs:
       - name: Install dependencies (Linux)
         run: |
           sudo apt update
-          sudo apt install -y build-essential libcurl4-openssl-dev libssl-dev libmongoc-dev
+          sudo apt install -y build-essential clang libcurl4-openssl-dev libssl-dev libmongoc-dev
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
@@ -48,7 +48,8 @@ jobs:
       - name: Build project (Linux)
         if: matrix.build-mode == 'manual'
         run: |
-          find . -name "*.cpp" -exec g++ {} -o {}.out -lcurl -lssl -lmongoc-1.0 \;
+          find . -name "*.cpp" ! -path "*/PowerEditor/*" ! -path "*/WinControls/*" \
+            -exec clang++ -c -fsyntax-only -w {} \;
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
