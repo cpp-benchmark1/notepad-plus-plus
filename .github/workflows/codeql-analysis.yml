@@ -1,4 +1,5 @@
-name: "CodeQL" 
+name: "CodeQL"
+
 on:
   push:
     branches: [ "main" ]
@@ -10,55 +11,44 @@ on:
         description: "Languages to analyze"
         required: true
         default: "c-cpp"
+
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     permissions:
       security-events: write
       packages: read
       actions: read
       contents: read
+
     strategy:
       fail-fast: false
       matrix:
         include:
-        - language: c-cpp
-          build-mode: manual
-          os: ubuntu-24.04
-        - language: c-cpp
-          build-mode: manual
-          os: windows-latest
+          - language: c-cpp
+            build-mode: manual
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: 'recursive'
-    
-    - name: Show runner OS
-      run: echo "Running on ${{ runner.os }}"
-    - name: Install dependencies (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt update
-        sudo apt install -y build-essential libcurl4-openssl-dev libssl-dev libmongoc-dev
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: ${{ matrix.language }}
-        build-mode: ${{ matrix.build-mode }}
-    - name: Build project (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        mkdir -p build
-        g++ $(find . -name "*.cpp") -o build/output -lcurl -lssl -lmongoc-1.0
-    - name: Build project (Windows)
-      if: runner.os == 'Windows' && matrix.build-mode == 'manual'
-      shell: powershell
-      run: |
-        cd PowerEditor\gcc
-        mingw32-make
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
-      with:
-        category: "/language:${{matrix.language}}"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Build project (Windows)
+        if: matrix.build-mode == 'manual'
+        shell: powershell
+        run: |
+          cd PowerEditor\gcc
+          mingw32-make
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
