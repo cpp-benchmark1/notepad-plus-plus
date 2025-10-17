@@ -226,7 +226,10 @@ CPP_PATH += $(addprefix $(GCC_DIRECTORY)/,$(sort $(patsubst %/,%,$(dir $(filter 
 CPP_PATH += $(addprefix $(SRC_DIRECTORY)/,$(sort $(patsubst %/,%,$(dir $(filter %.h %.hpp,$(SRC_SUBTREE))))))
 
 vpath %.cpp $(GCC_DIRECTORY) $(SRC_DIRECTORY)
-CXX_TARGETS := $(patsubst %.cpp,$(BUILD_DIRECTORY)/%.o,$(sort $(filter %.cpp,$(GCC_SUBTREE) $(SRC_SUBTREE))))
+vpath %.cxx $(GCC_DIRECTORY) $(SRC_DIRECTORY)
+# Build object list from both .cpp and .cxx sources for robustness
+CXX_SOURCES := $(sort $(filter %.cpp %.cxx,$(GCC_SUBTREE) $(SRC_SUBTREE)))
+CXX_TARGETS := $(patsubst %.cpp,$(BUILD_DIRECTORY)/%.o,$(patsubst %.cxx,$(BUILD_DIRECTORY)/%.o,$(CXX_SOURCES)))
 
 vpath %.rc $(GCC_DIRECTORY) $(SRC_DIRECTORY)
 RC_TARGETS := $(patsubst %.rc,$(BUILD_DIRECTORY)/%.res,$(sort $(filter %.rc,$(GCC_SUBTREE) $(SRC_SUBTREE))))
@@ -264,12 +267,16 @@ $(SCINTILLA_TARGET): | $(BUILD_DIRECTORY) $(SCINTILLA_BUILD_DIRECTORY)
 	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(SCINTILLA_DIRECTORY)/win32 -f makefile -f ../../boostregex/nppSpecifics_mingw.mak DIR_O=$(SCINTILLA_BUILD_PATH) LIBSCI=$(SCINTILLA_TARGET_PATH) $(SCINTILLA_TARGET_PATH)
 
 $(LEXILLA_TARGET): | $(BUILD_DIRECTORY) $(LEXILLA_BUILD_DIRECTORY)
-	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(LEXILLA_DIRECTORY)/src DIR_O=$(LEXILLA_BUILD_PATH) LIBLEXILLA=$(LEXILLA_TARGET_PATH) $(LEXILLA_TARGET_PATH)
+	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(LEXILLA_DIRECTORY)/src DIR_O=$(LEXILLA_BUILD_PATH) LIBLEXILLA=$(LEXILLA_TARGET_PATH) LEXLIB_OBJS="Accessor.o CharacterCategory.o CharacterSet.o DefaultLexer.o InList.o LexAccessor.o LexerBase.o LexerModule.o LexerSimple.o PropSetSimple.o StyleContext.o WordList.o CharacterQueryProcessor.o SymbolResolver.o LibraryLoader.o" $(LEXILLA_TARGET_PATH)
 
 binary: $(TARGET_BINARY) data
 	@echo +++ $(TARGET_CPU) $(BUILD_TYPE) : $(CURDIR)/$(TARGET_BINARY) +++
 
 $(CXX_TARGETS): $(BUILD_DIRECTORY)/%.o: %.cpp | $(BUILD_DIRECTORY)
+	@echo + compiling $<
+	$(AT)$(CXX) $(CXXFLAGS) $(addprefix -I,$(CPP_PATH)) $(addprefix -D,$(CPP_DEFINE)) -MMD -c -o $@ $<
+
+$(CXX_TARGETS): $(BUILD_DIRECTORY)/%.o: %.cxx | $(BUILD_DIRECTORY)
 	@echo + compiling $<
 	$(AT)$(CXX) $(CXXFLAGS) $(addprefix -I,$(CPP_PATH)) $(addprefix -D,$(CPP_DEFINE)) -MMD -c -o $@ $<
 
@@ -292,7 +299,7 @@ $(TARGET_DIRECTORY):
 
 $(TARGET_BINARY): $(CXX_TARGETS) $(RC_TARGETS) $(SCINTILLA_TARGET) $(LEXILLA_TARGET) | $(TARGET_DIRECTORY)
 	@echo + linking $@
-	$(AT)$(LD) $(LDFLAGS) $(filter-out %.a,$^) $(addprefix -L,$(LD_PATH)) $(addprefix -l,$(LD_LINK)) -o $@
+	$(AT)$(LD) $(LDFLAGS) $(filter-out %.a,$(CXX_TARGETS) $(RC_TARGETS)) $(addprefix -L,$(LD_PATH)) -lscintilla -llexilla $(addprefix -l,$(LD_LINK)) -o $@
 
 data: $(patsubst %/,%,$(SRC_DATA) $(BIN_DATA) $(INSTALLER_DATA))
 
