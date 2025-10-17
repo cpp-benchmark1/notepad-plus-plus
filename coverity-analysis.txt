@@ -1,3 +1,4 @@
+
 name: Coverity Scan
 
 on:
@@ -30,36 +31,38 @@ jobs:
           echo "$([System.IO.Path]::GetDirectoryName($covBuildExe))" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           Write-Host "cov-build found at $covBuildExe"
           Set-Content -Path "$env:GITHUB_WORKSPACE\_COV_BUILD_EXE.txt" -Value $covBuildExe
-
       - name: Install MSYS2 toolchain
         shell: pwsh
         run: |
           choco install msys2 -y
           refreshenv
           C:\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
-          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-curl mingw-w64-x86_64-libxml2 mingw-w64-x86_64-mongo-c-driver"
+          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-curl mingw-w64-x86_64-libxml2"
           echo "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Build Notepad++ inside MSYS2 and collect with Coverity
+      - name: Build (captured by Coverity)
         shell: pwsh
         run: |
-          $covIntDir = "$env:GITHUB_WORKSPACE\\cov-int"
-          $covBuildExe = Get-Content "$env:GITHUB_WORKSPACE\\_COV_BUILD_EXE.txt"
-          $covBuildExeUnix = $covBuildExe -replace '\\', '/'
-          $covIntDirUnix = $covIntDir -replace '\\', '/'
-          
-          $bashCommand = "set -e && " +
-                        "export PATH=/mingw64/bin:`$PATH && " +
-                        "export PKG_CONFIG_PATH=/mingw64/lib/pkgconfig && " +
-                        "export CPATH=/mingw64/include/libbson-1.0:/mingw64/include/libmongoc-1.0:/mingw64/include/libxml2 && " +
-                        "`"$covBuildExeUnix`" --dir `"$covIntDirUnix`" /mingw64/bin/make -f PowerEditor/gcc/makefile"
-
-          Write-Host "Running inside bash: $bashCommand"
-
-          C:\msys64\usr\bin\bash.exe -lc "$bashCommand"
-
-
+          $covBuildExe = Get-Content "$env:GITHUB_WORKSPACE\_COV_BUILD_EXE.txt"
+          $covInt = "$env:GITHUB_WORKSPACE\cov-int"
+          New-Item -ItemType Directory -Path $covInt -Force | Out-Null
+          Write-Host "Using cov-int at $covInt"
+          # Ensure required bin assets exist (makefile copies PowerEditor/bin/change.log)
+          $binDir = "$env:GITHUB_WORKSPACE\PowerEditor\bin"
+          New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+          $changeLog = Join-Path $binDir "change.log"
+          if (!(Test-Path $changeLog)) { Set-Content -Path $changeLog -Value "Placeholder changelog for CI" }
+          # --- ESCAPING WINDOWS PATHS ---
+          $winInclude = 'C:\Progra~2\Windows Kits\10\Include\10.0.22621.0\um'
+          $winShared  = 'C:\Progra~2\Windows Kits\10\Include\10.0.22621.0\shared'
+          $winLib     = 'C:\Progra~2\Windows Kits\10\Lib\10.0.22621.0\um\x64'
+          $env:CPATH = "$winInclude;$winShared;C:\msys64\mingw64\include\libxml2;" + $env:CPATH
+          $env:LIBRARY_PATH = "$winLib;C:\msys64\mingw64\lib;" + $env:LIBRARY_PATH
+          $env:PKG_CONFIG_PATH = "C:\msys64\mingw64\lib\pkgconfig"
+          gcc --version | Select-Object -First 1
+          make --version | Select-Object -First 1
+          # Run Coverity build
+          & $covBuildExe --dir $covInt make -f PowerEditor\gcc\makefile
       - name: Archive cov-int
         shell: pwsh
         run: |
@@ -69,7 +72,6 @@ jobs:
           if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
           Compress-Archive -Path $covInt -DestinationPath $zipPath
           Write-Host "Created $zipPath"
-
       - name: Upload to Coverity Scan
         shell: pwsh
         env:
@@ -88,7 +90,6 @@ jobs:
             -F "version=${{ github.sha }}" `
             -F "description=$desc" `
             "$url"
-
       - name: Upload build log (artifact)
         if: always()
         uses: actions/upload-artifact@v4
