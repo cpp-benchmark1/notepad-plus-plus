@@ -49,14 +49,16 @@ jobs:
           $covBuildExeUnix = $covBuildExe -replace '\\', '/'
           $covIntDirUnix = $covIntDir -replace '\\', '/'
           
-          $bashCommand = "export PATH=/mingw64/bin:`$PATH && " +
+          $bashCommand = "set -e && " +
+                        "export PATH=/mingw64/bin:`$PATH && " +
                         "export PKG_CONFIG_PATH=/mingw64/lib/pkgconfig && " +
                         "export CPATH=/mingw64/include/libbson-1.0:/mingw64/include/libmongoc-1.0:/mingw64/include/libxml2 && " +
-                        "`"$covBuildExeUnix`" --dir `"$covIntDirUnix`" make -f PowerEditor/gcc/makefile"
+                        "`"$covBuildExeUnix`" --dir `"$covIntDirUnix`" /mingw64/bin/make -f PowerEditor/gcc/makefile"
 
           Write-Host "Running inside bash: $bashCommand"
 
-          C:\msys64\usr\bin\bash.exe -lc "$bashCommand"
+          C:\msys64\usr\bin\bash.exe -lc '$bashCommand'
+
 
       - name: Archive cov-int
         shell: pwsh
