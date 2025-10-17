@@ -48,12 +48,20 @@ jobs:
           $covInt = "$env:GITHUB_WORKSPACE\cov-int"
           New-Item -ItemType Directory -Path $covInt -Force | Out-Null
           Write-Host "Using cov-int at $covInt"
-          # Ensure lexilla sub-make finds libxml2 headers and libs
-          $env:CPATH = "C:\msys64\mingw64\include\libxml2;" + $env:CPATH
-          $env:LIBRARY_PATH = "C:\msys64\mingw64\lib;" + $env:LIBRARY_PATH
+
+          # --- ESCAPING WINDOWS PATHS ---
+          $winInclude = 'C:\Progra~2\Windows Kits\10\Include\10.0.22621.0\um'
+          $winShared  = 'C:\Progra~2\Windows Kits\10\Include\10.0.22621.0\shared'
+          $winLib     = 'C:\Progra~2\Windows Kits\10\Lib\10.0.22621.0\um\x64'
+
+          $env:CPATH = "$winInclude;$winShared;C:\msys64\mingw64\include\libxml2;" + $env:CPATH
+          $env:LIBRARY_PATH = "$winLib;C:\msys64\mingw64\lib;" + $env:LIBRARY_PATH
           $env:PKG_CONFIG_PATH = "C:\msys64\mingw64\lib\pkgconfig"
+
           gcc --version | Select-Object -First 1
           make --version | Select-Object -First 1
+
+          # Run Coverity build
           & $covBuildExe --dir $covInt make -f PowerEditor\gcc\makefile
 
       - name: Archive cov-int
@@ -91,4 +99,3 @@ jobs:
         with:
           name: coverity-build-log
           path: cov-int/build-log.txt
-

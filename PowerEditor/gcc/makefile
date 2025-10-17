@@ -50,8 +50,8 @@ CPP_DEFINE := UNICODE _UNICODE OEMRESOURCE NOMINMAX _WIN32_WINNT=_WIN32_WINNT_WI
 
 # Adicionado: caminhos para libxml2 e ODBC
 CPP_PATH += C:/msys64/mingw64/include/libxml2
-CPP_PATH += C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/um
-CPP_PATH += C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/shared
+CPP_PATH += C:/Progra~2/Windows Kits/10/Include/10.0.22621.0/um
+CPP_PATH += C:/Progra~2/Windows Kits/10/Include/10.0.22621.0/shared
 
 LD := $(CXX)
 LDFLAGS := -municode -mwindows
