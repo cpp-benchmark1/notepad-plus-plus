@@ -57,7 +57,7 @@ jobs:
 
           Write-Host "Running inside bash: $bashCommand"
 
-          C:\msys64\usr\bin\bash.exe -lc '$bashCommand'
+          C:\msys64\usr\bin\bash.exe -lc "$bashCommand"
 
 
       - name: Archive cov-int
