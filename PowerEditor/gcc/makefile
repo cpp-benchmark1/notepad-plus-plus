@@ -47,11 +47,23 @@ RC := $(CROSS_COMPILE)windres
 RCFLAGS :=
 CPP_PATH := $(SCINTILLA_DIRECTORY)/include $(LEXILLA_DIRECTORY)/include
 CPP_DEFINE := UNICODE _UNICODE OEMRESOURCE NOMINMAX _WIN32_WINNT=_WIN32_WINNT_WIN7 NTDDI_VERSION=NTDDI_WIN7 TIXML_USE_STL TIXMLA_USE_STL
+
+# Adicionado: caminhos para libxml2 e ODBC
+CPP_PATH += C:/msys64/mingw64/include/libxml2
+CPP_PATH += C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/um
+CPP_PATH += C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/shared
+
 LD := $(CXX)
 LDFLAGS := -municode -mwindows
 LD_PATH :=
+
+# LD_LINK original
 LD_LINK := comctl32 crypt32 dbghelp ole32 sensapi shlwapi uuid uxtheme version wininet wintrust dwmapi
 LD_LINK += $(patsubst lib%.a,%,$(SCINTILLA_TARGET)) $(patsubst lib%.a,%,$(LEXILLA_TARGET)) imm32 msimg32 ole32 oleaut32
+
+# Adicionado: bibliotecas externas
+LD_LINK += xml2 odbc32
+
 SUBMAKEFLAGS := -O --no-print-directory
 
 # detect a request for a debug build
