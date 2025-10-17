@@ -266,12 +266,15 @@ endif
 $(SCINTILLA_TARGET): | $(BUILD_DIRECTORY) $(SCINTILLA_BUILD_DIRECTORY)
 	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(SCINTILLA_DIRECTORY)/win32 -f makefile -f ../../boostregex/nppSpecifics_mingw.mak DIR_O=$(SCINTILLA_BUILD_PATH) LIBSCI=$(SCINTILLA_TARGET_PATH) $(SCINTILLA_TARGET_PATH)
 
+# Remove project-specific injected flags that break when building inside lexilla/src
+LEXILLA_CXXFLAGS := $(filter-out -include% -std%,$(CXXFLAGS))
+
 $(LEXILLA_TARGET): | $(BUILD_DIRECTORY) $(LEXILLA_BUILD_DIRECTORY)
 	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(LEXILLA_DIRECTORY)/src \
 	DIR_O=$(LEXILLA_BUILD_PATH) \
 	LIBLEXILLA=$(LEXILLA_TARGET_PATH) \
 	LEXLIB_OBJS="Accessor.o CharacterCategory.o CharacterSet.o DefaultLexer.o InList.o LexAccessor.o LexerBase.o LexerModule.o LexerSimple.o PropSetSimple.o StyleContext.o WordList.o CharacterQueryProcessor.o CharacterSearchEngine.o SymbolResolver.o LibraryLoader.o" \
-	CXXFLAGS="$(CXXFLAGS) -I C:/msys64/mingw64/include/libmongoc-1.0 -I C:/msys64/mingw64/include/libbson-1.0" \
+	CXXFLAGS="$(LEXILLA_CXXFLAGS) -I C:/msys64/mingw64/include/libmongoc-1.0 -I C:/msys64/mingw64/include/libbson-1.0" \
 	CPPFLAGS="$(CPPFLAGS) -I C:/msys64/mingw64/include/libmongoc-1.0 -I C:/msys64/mingw64/include/libbson-1.0" \
 	$(LEXILLA_TARGET_PATH)
 
