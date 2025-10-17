@@ -1,122 +1,90 @@
 name: Coverity Scan
+
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
-    inputs:
-      languages:
-        description: "Languages to analyze"
-        required: true
-        default: "c-cpp"
 
 jobs:
   coverity:
     runs-on: windows-latest
     permissions:
-      security-events: write
-      packages: read
-      actions: read
-      contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - language: c-cpp
-          build-mode: manual
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: recursive
 
-      - name: Download and Install Coverity Tool
+      - name: Download Coverity Analysis
+        shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://scan.coverity.com/download/win64" -Method Post -Body "token=${{ secrets.COVERITY_TOKEN }}&project=${{ github.repository }}" -OutFile "coverity_tool.zip"
-          New-Item -ItemType Directory -Path "coverity_tool" -Force | Out-Null
-          unzip coverity_tool.zip
-          $Env:PATH = "$PWD\coverity_tool\bin;$Env:PATH"
-        shell: pwsh
+          $token = "${{ secrets.COVERITY_TOKEN }}"
+          if (-not $token) { Write-Error "COVERITY_TOKEN secret is required"; exit 1 }
+          Invoke-WebRequest -Uri "https://scan.coverity.com/download/win64" -Method Post -Body "token=$token&project=${{ github.repository }}" -OutFile "coverity_tool.zip"
+          Expand-Archive -Path "coverity_tool.zip" -DestinationPath "$PWD" -Force
+          $covBuildExe = Get-ChildItem -Path $PWD -Recurse -Filter "cov-build.exe" | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $covBuildExe) { Write-Error "cov-build.exe not found after extracting Coverity tool"; exit 1 }
+          echo "$([System.IO.Path]::GetDirectoryName($covBuildExe))" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          Write-Host "cov-build found at $covBuildExe"
+          Set-Content -Path "$env:GITHUB_WORKSPACE\_COV_BUILD_EXE.txt" -Value $covBuildExe
 
-      - name: Prepend Git usr/bin to PATH
-        run: echo "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Install MSYS2 toolchain
         shell: pwsh
-
-      - name: Install MSYS2 and dependencies
         run: |
           choco install msys2 -y
           refreshenv
           C:\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
-          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-curl mingw-w64-x86_64-libxml2"
+          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-toolchain"
+          echo "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        shell: pwsh
 
-      - name: Set up environment variables
+      - name: Build (captured by Coverity)
+        shell: pwsh
         run: |
-          echo "CPPFLAGS=-IC:\msys64\mingw64\include\libxml2" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "LDFLAGS=-LC:\msys64\mingw64\lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "PKG_CONFIG_PATH=C:\msys64\mingw64\lib\pkgconfig" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        shell: pwsh
+          $covBuildExe = Get-Content "$env:GITHUB_WORKSPACE\_COV_BUILD_EXE.txt"
+          $covInt = "$env:GITHUB_WORKSPACE\cov-int"
+          New-Item -ItemType Directory -Path $covInt -Force | Out-Null
+          Write-Host "Using cov-int at $covInt"
+          gcc --version | Select-Object -First 1
+          make --version | Select-Object -First 1
+          & $covBuildExe --dir $covInt make -f PowerEditor\gcc\makefile
 
-      - name: Build with Coverity
+      - name: Archive cov-int
+        shell: pwsh
         run: |
-          $covBuildExe = Get-ChildItem -Path $PWD -Recurse -Filter "cov-build.exe" | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $covBuildExe) { exit 1 }
-          New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE\cov-int" -Force | Out-Null
-          $env:CFLAGS = "-IC:\msys64\mingw64\include\libxml2"
-          $env:CXXFLAGS = "-IC:\msys64\mingw64\include\libxml2"
-          cd PowerEditor
-          if (-not (Test-Path "gcc\gcc")) { New-Item -ItemType Directory -Path "gcc\gcc" -Force | Out-Null }
-          Copy-Item "gcc\gcc-fixes.h" "gcc\gcc\gcc-fixes.h" -Force
-          if (-not (Test-Path "..\scintilla\gcc")) { New-Item -ItemType Directory -Path "..\scintilla\gcc" -Force | Out-Null }
-          Copy-Item "gcc\gcc-fixes.h" "..\scintilla\gcc\gcc-fixes.h" -Force
-          & $covBuildExe --dir "$env:GITHUB_WORKSPACE\cov-int" make -C gcc
-        shell: pwsh
+          $covInt = "$env:GITHUB_WORKSPACE\cov-int"
+          if (!(Test-Path $covInt)) { Write-Error "cov-int not found at $covInt"; exit 1 }
+          $zipPath = "$env:GITHUB_WORKSPACE\coverity-cov-int.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+          Compress-Archive -Path $covInt -DestinationPath $zipPath
+          Write-Host "Created $zipPath"
 
-      - name: Upload Coverity build log on failure
-        if: failure()
+      - name: Upload to Coverity Scan
+        shell: pwsh
+        env:
+          COVERITY_EMAIL: ${{ secrets.COVERITY_EMAIL }}
+        run: |
+          $zipPath = "$env:GITHUB_WORKSPACE\coverity-cov-int.zip"
+          if (-not (Test-Path $zipPath)) { Write-Error "Zip not found: $zipPath"; exit 1 }
+          $email = $env:COVERITY_EMAIL
+          if (-not $email) { Write-Error "COVERITY_EMAIL secret is required"; exit 1 }
+          $url = "https://scan.coverity.com/builds?project=${{ github.repository }}"
+          $desc = "GitHub Actions $env:GITHUB_WORKFLOW run $env:GITHUB_RUN_NUMBER ($env:GITHUB_SHA)"
+          curl -f -sS -X POST `
+            -F "token=${{ secrets.COVERITY_TOKEN }}" `
+            -F "email=$email" `
+            -F "file=@$zipPath" `
+            -F "version=${{ github.sha }}" `
+            -F "description=$desc" `
+            "$url"
+
+      - name: Upload build log (artifact)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverity-build-log
           path: cov-int/build-log.txt
 
-      - name: Compress Coverity Output
-        run: |
-          $covDir = Join-Path $env:GITHUB_WORKSPACE "cov-int"
-          $zipPath = Join-Path $env:GITHUB_WORKSPACE "myproject.zip"
-          if (Test-Path $covDir) { Compress-Archive -Path $covDir -DestinationPath $zipPath -Force }
-        shell: pwsh
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: "coverity-scan-${{ github.run_id }}"
-          release_name: "Coverity Scan Results"
-          body: "Automated Coverity Scan Results"
-          draft: false
-          prerelease: false
-
-      - name: Upload Asset to Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: myproject.zip
-          asset_name: myproject.zip
-          asset_content_type: application/x-bzip2
-
-      - name: Notify Coverity Scan
-        run: |
-          Invoke-WebRequest -Uri "https://scan.coverity.com/builds" -Method Post -Body @{
-            project     = "${{ github.repository }}"
-            token       = "${{ secrets.COVERITY_TOKEN }}"
-            email       = "cpp.benchmark@proton.me"
-            url         = "https://github.com/${{ github.repository }}/releases/download/coverity-scan-${{ github.run_id }}/myproject.zip"
-            version     = "1.0"
-            description = "Automated Coverity Scan"
-          }
