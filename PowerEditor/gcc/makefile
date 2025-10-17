@@ -48,7 +48,6 @@ RCFLAGS :=
 CPP_PATH := $(SCINTILLA_DIRECTORY)/include $(LEXILLA_DIRECTORY)/include
 CPP_DEFINE := UNICODE _UNICODE OEMRESOURCE NOMINMAX _WIN32_WINNT=_WIN32_WINNT_WIN7 NTDDI_VERSION=NTDDI_WIN7 TIXML_USE_STL TIXMLA_USE_STL
 
-# Adicionado: caminhos para libxml2 e ODBC
 CPP_PATH += C:/msys64/mingw64/include/libxml2
 CPP_PATH += C:/Progra~2/Windows Kits/10/Include/10.0.22621.0/um
 CPP_PATH += C:/Progra~2/Windows Kits/10/Include/10.0.22621.0/shared
@@ -61,8 +60,7 @@ LD_PATH :=
 LD_LINK := comctl32 crypt32 dbghelp ole32 sensapi shlwapi uuid uxtheme version wininet wintrust dwmapi
 LD_LINK += $(patsubst lib%.a,%,$(SCINTILLA_TARGET)) $(patsubst lib%.a,%,$(LEXILLA_TARGET)) imm32 msimg32 ole32 oleaut32
 
-# Adicionado: bibliotecas externas
-LD_LINK += xml2 odbc32
+LD_LINK += xml2 odbc32 ws2_32 curl wldap32 winmm bcrypt iconv z lzma
 
 SUBMAKEFLAGS := -O --no-print-directory
 
@@ -294,7 +292,7 @@ $(TARGET_DIRECTORY):
 
 $(TARGET_BINARY): $(CXX_TARGETS) $(RC_TARGETS) $(SCINTILLA_TARGET) $(LEXILLA_TARGET) | $(TARGET_DIRECTORY)
 	@echo + linking $@
-	$(AT)$(LD) $(LDFLAGS) $(filter-out %.a,$^) $(addprefix -L,$(LD_PATH)) $(addprefix -l,$(LD_LINK)) -static -o $@
+	$(AT)$(LD) $(LDFLAGS) $(filter-out %.a,$^) $(addprefix -L,$(LD_PATH)) $(addprefix -l,$(LD_LINK)) -o $@
 
 data: $(patsubst %/,%,$(SRC_DATA) $(BIN_DATA) $(INSTALLER_DATA))
 
