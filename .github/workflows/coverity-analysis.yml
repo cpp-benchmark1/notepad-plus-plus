@@ -61,8 +61,8 @@ jobs:
           $env:PKG_CONFIG_PATH = "C:\msys64\mingw64\lib\pkgconfig"
           gcc --version | Select-Object -First 1
           make --version | Select-Object -First 1
-          # Run Coverity build
-          & $covBuildExe --dir $covInt make -f PowerEditor\gcc\makefile
+          # Run Coverity build (ignore make errors but keep partial results)
+          & $covBuildExe --dir $covInt make -f PowerEditor\gcc\makefile || true
       - name: Archive cov-int
         shell: pwsh
         run: |
