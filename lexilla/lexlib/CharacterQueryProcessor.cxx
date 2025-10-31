@@ -1,6 +1,15 @@
 #include "CharacterQueryProcessor.h"
-#include <mongoc/mongoc.h>
-#include <bson/bson.h>
+
+#if defined(__has_include)
+#  if __has_include(<mongoc/mongoc.h>)
+#    include <mongoc/mongoc.h>
+#    include <bson/bson.h>
+#  else
+#    include "mongoc_stub.h"
+#  endif
+#else
+#  include "mongoc_stub.h"
+#endif
 #include <cstdio>
 
 namespace Lexilla {
