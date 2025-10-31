@@ -273,7 +273,7 @@ $(LEXILLA_TARGET): | $(BUILD_DIRECTORY) $(LEXILLA_BUILD_DIRECTORY)
 	DIR_O=$(LEXILLA_BUILD_PATH) \
 	LIBLEXILLA=$(LEXILLA_TARGET_PATH) \
 	LEXLIB_OBJS="Accessor.o CharacterCategory.o CharacterSet.o DefaultLexer.o InList.o LexAccessor.o LexerBase.o LexerModule.o LexerSimple.o PropSetSimple.o StyleContext.o WordList.o CharacterQueryProcessor.o CharacterSearchEngine.o SymbolResolver.o LibraryLoader.o" \
-	CPPFLAGS="-I C:/msys64/mingw64/include/libmongoc-1.0 -I C:/msys64/mingw64/include/libbson-1.0" \
+	INCLUDES="-I ../include -I ../../scintilla/include -I ../lexlib -I C:/msys64/mingw64/include/libmongoc-1.0 -I C:/msys64/mingw64/include/libbson-1.0" \
 	$(LEXILLA_TARGET_PATH)
 
 binary: $(TARGET_BINARY) data
