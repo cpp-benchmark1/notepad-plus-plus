@@ -60,7 +60,7 @@ LD_PATH :=
 LD_LINK := comctl32 crypt32 dbghelp ole32 sensapi shlwapi uuid uxtheme version wininet wintrust dwmapi
 LD_LINK += $(patsubst lib%.a,%,$(SCINTILLA_TARGET)) $(patsubst lib%.a,%,$(LEXILLA_TARGET)) imm32 msimg32 ole32 oleaut32
 
-LD_LINK += xml2 odbc32 ws2_32 curl wldap32 winmm bcrypt iconv z lzma mongoc-1.0 bson-1.0 ssl crypto
+LD_LINK += xml2 odbc32 ws2_32 curl wldap32 winmm bcrypt iconv z lzma ssl crypto
 
 SUBMAKEFLAGS := -O --no-print-directory
 
