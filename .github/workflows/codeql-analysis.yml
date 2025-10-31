@@ -1,4 +1,4 @@
-name: CodeQL Analysis
+name: "CodeQL Analysis"
 
 on:
   push:
@@ -6,20 +6,15 @@ on:
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
-    inputs:
-      languages:
-        description: "Languages to analyze"
-        required: true
-        default: "cpp"
 
 jobs:
   analyze:
+    name: Analyze
     runs-on: windows-latest
     permissions:
       security-events: write
-      contents: read
       actions: read
-      packages: read
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -40,39 +35,20 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: ${{ github.event.inputs.languages }}
+          languages: cpp
           build-mode: manual
 
-      - name: Build project (captured by CodeQL)
+      - name: Build project
         shell: pwsh
         run: |
-
-          $binDir = "$env:GITHUB_WORKSPACE\PowerEditor\bin"
-          New-Item -ItemType Directory -Path $binDir -Force | Out-Null
-          $changeLog = Join-Path $binDir "change.log"
-          if (!(Test-Path $changeLog)) { Set-Content -Path $changeLog -Value "Placeholder changelog for CI" }
-
-
-          $winInclude = 'C:\Progra~2\Windows Kits\10\Include\10.0.22621.0\um'
-          $winShared  = 'C:\Progra~2\Windows Kits\10\Include\10.0.22621.0\shared'
-          $env:CPATH = "$winInclude;$winShared;C:\msys64\mingw64\include\libxml2;" + $env:CPATH
+          $env:CPATH = "C:\msys64\mingw64\include\libxml2;" + $env:CPATH
           $env:LIBRARY_PATH = "C:\msys64\mingw64\lib;" + $env:LIBRARY_PATH
           $env:PKG_CONFIG_PATH = "C:\msys64\mingw64\lib\pkgconfig"
-
-          gcc --version | Select-Object -First 1
-          make --version | Select-Object -First 1
-
-
+          gcc --version
+          make --version
           make -f PowerEditor\gcc\makefile || true
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:cpp"
-
-      - name: Upload build logs (artifact)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: codeql-build-logs
-          path: '**/build*.log'
