@@ -81,7 +81,7 @@ vpath %.cxx ../src ../lexlib ../lexers
 DEFINES += -D$(if $(DEBUG),DEBUG,NDEBUG)
 BASE_FLAGS += $(if $(DEBUG),-g,-O3)
 
-INCLUDES = -I ../include -I $(SCINTILLA_INCLUDE) -I ../lexlib
+INCLUDES = -I ../include -I $(SCINTILLA_INCLUDE) -I ../lexlib -I C:/msys64/mingw64/include/libmongoc-1.0 -I C:/msys64/mingw64/include/libbson-1.0
 LDFLAGS += -shared
 
 BASE_FLAGS += $(WARNINGS)

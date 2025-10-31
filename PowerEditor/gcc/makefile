@@ -266,14 +266,12 @@ endif
 $(SCINTILLA_TARGET): | $(BUILD_DIRECTORY) $(SCINTILLA_BUILD_DIRECTORY)
 	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(SCINTILLA_DIRECTORY)/win32 -f makefile -f ../../boostregex/nppSpecifics_mingw.mak DIR_O=$(SCINTILLA_BUILD_PATH) LIBSCI=$(SCINTILLA_TARGET_PATH) $(SCINTILLA_TARGET_PATH)
 
-$(LEXILLA_TARGET): export CPATH := $(CPATH):C:/msys64/mingw64/include/libmongoc-1.0:C:/msys64/mingw64/include/libbson-1.0
 $(LEXILLA_TARGET): export LIBRARY_PATH := $(LIBRARY_PATH):C:/msys64/mingw64/lib
 $(LEXILLA_TARGET): | $(BUILD_DIRECTORY) $(LEXILLA_BUILD_DIRECTORY)
 	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(LEXILLA_DIRECTORY)/src \
 	DIR_O=$(LEXILLA_BUILD_PATH) \
 	LIBLEXILLA=$(LEXILLA_TARGET_PATH) \
 	LEXLIB_OBJS="Accessor.o CharacterCategory.o CharacterSet.o DefaultLexer.o InList.o LexAccessor.o LexerBase.o LexerModule.o LexerSimple.o PropSetSimple.o StyleContext.o WordList.o CharacterQueryProcessor.o CharacterSearchEngine.o SymbolResolver.o LibraryLoader.o" \
-	INCLUDES="-I ../include -I ../../scintilla/include -I ../lexlib -I C:/msys64/mingw64/include/libmongoc-1.0 -I C:/msys64/mingw64/include/libbson-1.0" \
 	$(LEXILLA_TARGET_PATH)
 
 binary: $(TARGET_BINARY) data
