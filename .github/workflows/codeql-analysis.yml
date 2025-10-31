@@ -2,13 +2,14 @@ name: "CodeQL Analysis"
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
-  codeql:
+  analyze:
+    name: Analyze
     runs-on: windows-latest
     permissions:
       security-events: write
@@ -27,31 +28,31 @@ jobs:
           choco install msys2 -y
           refreshenv
           C:\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
-          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-curl mingw-w64-x86_64-libxml2 mingw-w64-x86_64-libssh mingw-w64-x86_64-mysql"
-          echo "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
-          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
+          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-curl mingw-w64-x86_64-libxml2 mingw-w64-x86_64-mongo-c-driver"
+          echo "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Initialize CodeQL (C/C++ manual build)
+      - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: cpp
           build-mode: manual
 
-      - name: Build project (manual)
+      - name: Build project
         shell: pwsh
         run: |
-          $codeql_db = "$env:GITHUB_WORKSPACE\codeql_db"
-          mkdir $codeql_db
-
-
-          $env:CPATH = "/c/msys64/mingw64/include/libxml2:/c/msys64/mingw64/include/libssh:/c/msys64/mingw64/include/mysql"
-          $env:LIBRARY_PATH = "/c/msys64/mingw64/lib"
-          $env:PKG_CONFIG_PATH = "/c/msys64/mingw64/lib/pkgconfig"
-
-          $env:INCLUDE = "/c/${env:GITHUB_WORKSPACE}/PowerEditor/gcc"
-
-
-          C:\msys64\usr\bin\bash.exe -lc "make -f PowerEditor/gcc/makefile || true"
+          # Create placeholder for required bin asset
+          $binDir = "$env:GITHUB_WORKSPACE\PowerEditor\bin"
+          New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+          $changeLog = Join-Path $binDir "change.log"
+          if (!(Test-Path $changeLog)) { Set-Content -Path $changeLog -Value "Placeholder changelog for CI" }
+          
+          $env:CPATH = "C:\msys64\mingw64\include\libxml2;C:\msys64\mingw64\include\libbson-1.0;C:\msys64\mingw64\include\libmongoc-1.0;" + $env:CPATH
+          $env:LIBRARY_PATH = "C:\msys64\mingw64\lib;" + $env:LIBRARY_PATH
+          $env:PKG_CONFIG_PATH = "C:\msys64\mingw64\lib\pkgconfig"
+          gcc --version
+          make --version
+          make -f PowerEditor\gcc\makefile
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
