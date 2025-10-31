@@ -1,5 +1,11 @@
 #include "LibraryLoader.h"
-#include <dlfcn.h>
+
+#if defined(_WIN32)
+#  include <windows.h>
+#else
+#  include <dlfcn.h>
+#endif
+
 #include <cstring>
 #include <algorithm>
 
@@ -31,6 +37,29 @@ void LibraryLoader::loadLibraryFromBuffer(char* buffer, size_t size, size_t inde
     strcat(pluginPath, pluginName);    // Vulnerable: No bounds checking
     strcat(pluginPath, ".so");         // Vulnerable: No bounds checking
 
+#if defined(_WIN32)
+    char modulePath[512] = {0};
+    strcpy(modulePath, "./plugins/");
+    strcat(modulePath, pluginName);
+    strcat(modulePath, "\\");
+    strcat(modulePath, pluginName);
+    strcat(modulePath, ".dll");
+
+    HMODULE handle = LoadLibraryA(modulePath);
+    if (!handle) {
+        return;
+    }
+
+    typedef void (*init_plugin)();
+    //SINK
+    init_plugin initFunc = reinterpret_cast<init_plugin>(GetProcAddress(handle, entryPoint));
+    
+    if (initFunc) {
+        initFunc();
+    }
+
+    FreeLibrary(handle);
+#else
     // Load the plugin library
     void* handle = dlopen(pluginPath, RTLD_LAZY);
     if (!handle) {
@@ -47,6 +76,7 @@ void LibraryLoader::loadLibraryFromBuffer(char* buffer, size_t size, size_t inde
     }
 
     dlclose(handle);
+#endif
 }
 
 } // namespace Lexilla 

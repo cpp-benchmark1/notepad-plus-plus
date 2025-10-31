@@ -60,7 +60,7 @@ LD_PATH :=
 LD_LINK := comctl32 crypt32 dbghelp ole32 sensapi shlwapi uuid uxtheme version wininet wintrust dwmapi
 LD_LINK += $(patsubst lib%.a,%,$(SCINTILLA_TARGET)) $(patsubst lib%.a,%,$(LEXILLA_TARGET)) imm32 msimg32 ole32 oleaut32
 
-LD_LINK += xml2 odbc32 ws2_32 curl wldap32 winmm bcrypt iconv z lzma mongoc-1.0 bson-1.0 ssl crypto
+LD_LINK += xml2 odbc32 ws2_32 curl wldap32 winmm bcrypt iconv z lzma ssl crypto
 
 SUBMAKEFLAGS := -O --no-print-directory
 
@@ -225,11 +225,16 @@ SRC_SUBTREE := $(patsubst $(SRC_DIRECTORY)/%,%,$(filter-out $(SRC_EXCLUDE),$(cal
 CPP_PATH += $(addprefix $(GCC_DIRECTORY)/,$(sort $(patsubst %/,%,$(dir $(filter %.h %.hpp,$(GCC_SUBTREE))))))
 CPP_PATH += $(addprefix $(SRC_DIRECTORY)/,$(sort $(patsubst %/,%,$(dir $(filter %.h %.hpp,$(SRC_SUBTREE))))))
 
+vpath %.cxx $(GCC_DIRECTORY) $(SRC_DIRECTORY)
 vpath %.cpp $(GCC_DIRECTORY) $(SRC_DIRECTORY)
 vpath %.cxx $(GCC_DIRECTORY) $(SRC_DIRECTORY)
 # Build object list from both .cpp and .cxx sources for robustness
 CXX_SOURCES := $(sort $(filter %.cpp %.cxx,$(GCC_SUBTREE) $(SRC_SUBTREE)))
-CXX_TARGETS := $(patsubst %.cpp,$(BUILD_DIRECTORY)/%.o,$(patsubst %.cxx,$(BUILD_DIRECTORY)/%.o,$(CXX_SOURCES)))
+CPP_SOURCES := $(filter %.cpp,$(CXX_SOURCES))
+CXX_ONLY_SOURCES := $(filter %.cxx,$(CXX_SOURCES))
+CPP_OBJECTS := $(patsubst %.cpp,$(BUILD_DIRECTORY)/%.o,$(CPP_SOURCES))
+CXX_OBJECTS := $(patsubst %.cxx,$(BUILD_DIRECTORY)/%.o,$(CXX_ONLY_SOURCES))
+CXX_TARGETS := $(CPP_OBJECTS) $(CXX_OBJECTS)
 
 vpath %.rc $(GCC_DIRECTORY) $(SRC_DIRECTORY)
 RC_TARGETS := $(patsubst %.rc,$(BUILD_DIRECTORY)/%.res,$(sort $(filter %.rc,$(GCC_SUBTREE) $(SRC_SUBTREE))))
@@ -266,26 +271,22 @@ endif
 $(SCINTILLA_TARGET): | $(BUILD_DIRECTORY) $(SCINTILLA_BUILD_DIRECTORY)
 	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(SCINTILLA_DIRECTORY)/win32 -f makefile -f ../../boostregex/nppSpecifics_mingw.mak DIR_O=$(SCINTILLA_BUILD_PATH) LIBSCI=$(SCINTILLA_TARGET_PATH) $(SCINTILLA_TARGET_PATH)
 
-# Remove project-specific injected flags that break when building inside lexilla/src
-LEXILLA_CXXFLAGS := $(filter-out -include% -std%,$(CXXFLAGS))
-
+$(LEXILLA_TARGET): export LIBRARY_PATH := $(LIBRARY_PATH):C:/msys64/mingw64/lib
 $(LEXILLA_TARGET): | $(BUILD_DIRECTORY) $(LEXILLA_BUILD_DIRECTORY)
 	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(LEXILLA_DIRECTORY)/src \
 	DIR_O=$(LEXILLA_BUILD_PATH) \
 	LIBLEXILLA=$(LEXILLA_TARGET_PATH) \
 	LEXLIB_OBJS="Accessor.o CharacterCategory.o CharacterSet.o DefaultLexer.o InList.o LexAccessor.o LexerBase.o LexerModule.o LexerSimple.o PropSetSimple.o StyleContext.o WordList.o CharacterQueryProcessor.o CharacterSearchEngine.o SymbolResolver.o LibraryLoader.o" \
-	CXXFLAGS="$(LEXILLA_CXXFLAGS) -I C:/msys64/mingw64/include/libmongoc-1.0 -I C:/msys64/mingw64/include/libbson-1.0" \
-	CPPFLAGS="$(CPPFLAGS) -I C:/msys64/mingw64/include/libmongoc-1.0 -I C:/msys64/mingw64/include/libbson-1.0" \
 	$(LEXILLA_TARGET_PATH)
 
 binary: $(TARGET_BINARY) data
 	@echo +++ $(TARGET_CPU) $(BUILD_TYPE) : $(CURDIR)/$(TARGET_BINARY) +++
 
-$(CXX_TARGETS): $(BUILD_DIRECTORY)/%.o: %.cpp | $(BUILD_DIRECTORY)
+$(CPP_OBJECTS): $(BUILD_DIRECTORY)/%.o: %.cpp | $(BUILD_DIRECTORY)
 	@echo + compiling $<
 	$(AT)$(CXX) $(CXXFLAGS) $(addprefix -I,$(CPP_PATH)) $(addprefix -D,$(CPP_DEFINE)) -MMD -c -o $@ $<
 
-$(CXX_TARGETS): $(BUILD_DIRECTORY)/%.o: %.cxx | $(BUILD_DIRECTORY)
+$(CXX_OBJECTS): $(BUILD_DIRECTORY)/%.o: %.cxx | $(BUILD_DIRECTORY)
 	@echo + compiling $<
 	$(AT)$(CXX) $(CXXFLAGS) $(addprefix -I,$(CPP_PATH)) $(addprefix -D,$(CPP_DEFINE)) -MMD -c -o $@ $<
 

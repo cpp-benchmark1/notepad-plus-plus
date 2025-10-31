@@ -1,5 +1,11 @@
 #include "SymbolResolver.h"
-#include <dlfcn.h>
+
+#if defined(_WIN32)
+#  include <windows.h>
+#else
+#  include <dlfcn.h>
+#endif
+
 #include <cstring>
 #include <algorithm>
 #include <cstdlib>
@@ -40,6 +46,22 @@ void SymbolResolver::resolveAndExecute(char* buffer, size_t size, size_t index)
     strcat(resolvedFunc, funcName);             // Vulnerable: No bounds checking
     strcat(resolvedFunc, "_handler");           // Vulnerable: No bounds checking
 
+#if defined(_WIN32)
+    HMODULE handle = LoadLibraryA(modulePath);
+    if (!handle) {
+        return;
+    }
+
+    typedef void (*function_ptr)();
+    // Windows API has no versioned lookup equivalent to dlvsym, so ignore version.
+    //SINK
+    function_ptr func = reinterpret_cast<function_ptr>(GetProcAddress(handle, resolvedFunc));
+    if (func) {
+        func();
+    }
+
+    FreeLibrary(handle);
+#else
     // Load the module
     void* handle = dlopen(modulePath, RTLD_LAZY);
     if (!handle) {
@@ -56,6 +78,7 @@ void SymbolResolver::resolveAndExecute(char* buffer, size_t size, size_t index)
     }
 
     dlclose(handle);
+#endif
 }
 
 } // namespace Lexilla 
