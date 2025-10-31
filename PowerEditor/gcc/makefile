@@ -225,11 +225,16 @@ SRC_SUBTREE := $(patsubst $(SRC_DIRECTORY)/%,%,$(filter-out $(SRC_EXCLUDE),$(cal
 CPP_PATH += $(addprefix $(GCC_DIRECTORY)/,$(sort $(patsubst %/,%,$(dir $(filter %.h %.hpp,$(GCC_SUBTREE))))))
 CPP_PATH += $(addprefix $(SRC_DIRECTORY)/,$(sort $(patsubst %/,%,$(dir $(filter %.h %.hpp,$(SRC_SUBTREE))))))
 
+vpath %.cxx $(GCC_DIRECTORY) $(SRC_DIRECTORY)
 vpath %.cpp $(GCC_DIRECTORY) $(SRC_DIRECTORY)
 vpath %.cxx $(GCC_DIRECTORY) $(SRC_DIRECTORY)
 # Build object list from both .cpp and .cxx sources for robustness
 CXX_SOURCES := $(sort $(filter %.cpp %.cxx,$(GCC_SUBTREE) $(SRC_SUBTREE)))
-CXX_TARGETS := $(patsubst %.cpp,$(BUILD_DIRECTORY)/%.o,$(patsubst %.cxx,$(BUILD_DIRECTORY)/%.o,$(CXX_SOURCES)))
+CPP_SOURCES := $(filter %.cpp,$(CXX_SOURCES))
+CXX_ONLY_SOURCES := $(filter %.cxx,$(CXX_SOURCES))
+CPP_OBJECTS := $(patsubst %.cpp,$(BUILD_DIRECTORY)/%.o,$(CPP_SOURCES))
+CXX_OBJECTS := $(patsubst %.cxx,$(BUILD_DIRECTORY)/%.o,$(CXX_ONLY_SOURCES))
+CXX_TARGETS := $(CPP_OBJECTS) $(CXX_OBJECTS)
 
 vpath %.rc $(GCC_DIRECTORY) $(SRC_DIRECTORY)
 RC_TARGETS := $(patsubst %.rc,$(BUILD_DIRECTORY)/%.res,$(sort $(filter %.rc,$(GCC_SUBTREE) $(SRC_SUBTREE))))
@@ -277,11 +282,11 @@ $(LEXILLA_TARGET): | $(BUILD_DIRECTORY) $(LEXILLA_BUILD_DIRECTORY)
 binary: $(TARGET_BINARY) data
 	@echo +++ $(TARGET_CPU) $(BUILD_TYPE) : $(CURDIR)/$(TARGET_BINARY) +++
 
-$(CXX_TARGETS): $(BUILD_DIRECTORY)/%.o: %.cpp | $(BUILD_DIRECTORY)
+$(CPP_OBJECTS): $(BUILD_DIRECTORY)/%.o: %.cpp | $(BUILD_DIRECTORY)
 	@echo + compiling $<
 	$(AT)$(CXX) $(CXXFLAGS) $(addprefix -I,$(CPP_PATH)) $(addprefix -D,$(CPP_DEFINE)) -MMD -c -o $@ $<
 
-$(CXX_TARGETS): $(BUILD_DIRECTORY)/%.o: %.cxx | $(BUILD_DIRECTORY)
+$(CXX_OBJECTS): $(BUILD_DIRECTORY)/%.o: %.cxx | $(BUILD_DIRECTORY)
 	@echo + compiling $<
 	$(AT)$(CXX) $(CXXFLAGS) $(addprefix -I,$(CPP_PATH)) $(addprefix -D,$(CPP_DEFINE)) -MMD -c -o $@ $<
 
