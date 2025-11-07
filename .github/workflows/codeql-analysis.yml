@@ -7,10 +7,10 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
     inputs:
-    languages:
-      description: "Languages to analyze"
-      required: true
-      default: "c-cpp"
+      languages:
+        description: "Languages to analyze"
+        required: true
+        default: "c-cpp"
 
 jobs:
   codeql:
